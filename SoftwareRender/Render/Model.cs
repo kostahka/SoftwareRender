@@ -22,27 +22,24 @@ namespace SoftwareRender
         public Model(List<Vector4> vertices,
                     List<Vector3> texture_uv,
                     List<Vector3> normals,
-                    Dictionary<PrimitiveType, List<int>> verticesIndexes,
-                    Dictionary<PrimitiveType, List<int>> texturesIndexes,
-                    Dictionary<PrimitiveType, List<int>> normalsIndexes)
+                    List<int> verticesIndexes,
+                    List<int> texturesIndexes,
+                    List<int> normalsIndexes)
         {
-            foreach (var primitive in verticesIndexes.Keys)
-            {
                 // Generate vertex buffers
-                VertexElementsBuffer<Vector4> verticesBuffer = new(vertices, verticesIndexes[primitive]);
+                VertexElementsBuffer<Vector4> verticesBuffer = new(vertices, verticesIndexes);
 
                 // Sum buffers
                 List<IVertexBuffer> vertexBuffers = new();
                 vertexBuffers.Add(verticesBuffer);
 
                 // Generate VAO
-                vaos[primitive] = new VertexArrayObject<ModelVertexInput>(vertexBuffers);
-                vertexCounts[primitive] = verticesIndexes[primitive].Count;
-            }
+                vaos = new VertexArrayObject<ModelVertexInput>(vertexBuffers);
+                vertexCounts = verticesIndexes.Count;
         }
 
-        public Dictionary<PrimitiveType, int> vertexCounts = new();
-        public Dictionary<PrimitiveType, VertexArrayObject<ModelVertexInput>> vaos = new();
+        public int vertexCounts = new();
+        public VertexArrayObject<ModelVertexInput> vaos;
         public Matrix4x4 modelMatrix = Matrix4x4.Identity;
     }
 }

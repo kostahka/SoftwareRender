@@ -27,10 +27,7 @@ namespace SoftwareRender
             shader.view = camera.view;
             shader.proj = camera.proj;
 
-            foreach (var pr in marioModel.vaos.Keys)
-            {
-                conveyor.DrawData<ModelVertexInput,ModelFragmentData>(marioModel.vaos[pr], marioModel.vertexCounts[pr], pr);
-            }
+            conveyor.DrawData<ModelVertexInput,ModelFragmentData>(marioModel.vaos, marioModel.vertexCounts);
 
             rCanvas.SwapBuffers();
         }

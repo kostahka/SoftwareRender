@@ -27,9 +27,9 @@ namespace SoftwareRender
             List<Vector4> vertices = new List<Vector4>();
             List<Vector3> texture_uv = new List<Vector3>();
             List<Vector3> normals = new List<Vector3>();
-            Dictionary<PrimitiveType, List<int>> verticesIndexes = new ();
-            Dictionary<PrimitiveType, List<int>> textureIndexes = new ();
-            Dictionary<PrimitiveType, List<int>> normalsIndexes = new ();
+            List<int> verticesIndexes = new ();
+            List<int> textureIndexes = new ();
+            List<int> normalsIndexes = new ();
             using (var reader = new StreamReader(stream: new FileStream(file_path, FileMode.Open)))
             {
                 while (!reader.EndOfStream)
@@ -82,30 +82,60 @@ namespace SoftwareRender
                         var tokens = line.Split(' ');
 
                         PrimitiveType type = tokens.Length == 4 ? PrimitiveType.triangles : PrimitiveType.quads;
-                            
-                        for(int i = 1; i < tokens.Length; i++)
+
+                        VertexIndexes[] vertexIndexes = new VertexIndexes[tokens.Length - 1];
+                        for (int i = 1; i < tokens.Length; i++)
                         {
                             var str_indices = tokens[i].Split('/');
-                            VertexIndexes vertexIndexes = new VertexIndexes(int.Parse(str_indices[0]));
+                            vertexIndexes[i - 1] = new VertexIndexes(int.Parse(str_indices[0]));
                             if(str_indices.Length > 1 && str_indices[1].Length != 0)
                             {
-                                vertexIndexes.t_i = int.Parse(str_indices[1]);
+                                vertexIndexes[i - 1].t_i = int.Parse(str_indices[1]);
                             }
                             if(str_indices.Length > 2 && str_indices[2].Length != 0)
                             {
-                                vertexIndexes.n_i = int.Parse(str_indices[2]);
+                                vertexIndexes[i - 1].n_i = int.Parse(str_indices[2]);
                             }
+                        }
+                        if (type == PrimitiveType.triangles)
+                        {
+                            verticesIndexes.Add(vertexIndexes[0].v_i);
+                            textureIndexes.Add(vertexIndexes[0].t_i);
+                            normalsIndexes.Add(vertexIndexes[0].n_i);
 
-                            if (!verticesIndexes.ContainsKey(type))
-                            {
-                                verticesIndexes.Add(type, new List<int>());
-                                textureIndexes.Add(type, new List<int>());
-                                normalsIndexes.Add(type, new List<int>());
-                            }
+                            verticesIndexes.Add(vertexIndexes[1].v_i);
+                            textureIndexes.Add(vertexIndexes[1].t_i);
+                            normalsIndexes.Add(vertexIndexes[1].n_i);
 
-                            verticesIndexes[type].Add(vertexIndexes.v_i);
-                            textureIndexes[type].Add(vertexIndexes.t_i);
-                            normalsIndexes[type].Add(vertexIndexes.n_i);
+                            verticesIndexes.Add(vertexIndexes[2].v_i);
+                            textureIndexes.Add(vertexIndexes[2].t_i);
+                            normalsIndexes.Add(vertexIndexes[2].n_i);
+                        }
+                        else if (type == PrimitiveType.quads)
+                        {
+                            verticesIndexes.Add(vertexIndexes[0].v_i);
+                            textureIndexes.Add(vertexIndexes[0].t_i);
+                            normalsIndexes.Add(vertexIndexes[0].n_i);
+
+                            verticesIndexes.Add(vertexIndexes[1].v_i);
+                            textureIndexes.Add(vertexIndexes[1].t_i);
+                            normalsIndexes.Add(vertexIndexes[1].n_i);
+
+                            verticesIndexes.Add(vertexIndexes[2].v_i);
+                            textureIndexes.Add(vertexIndexes[2].t_i);
+                            normalsIndexes.Add(vertexIndexes[2].n_i);
+
+                            verticesIndexes.Add(vertexIndexes[2].v_i);
+                            textureIndexes.Add(vertexIndexes[2].t_i);
+                            normalsIndexes.Add(vertexIndexes[2].n_i);
+
+                            verticesIndexes.Add(vertexIndexes[3].v_i);
+                            textureIndexes.Add(vertexIndexes[3].t_i);
+                            normalsIndexes.Add(vertexIndexes[3].n_i);
+
+                            verticesIndexes.Add(vertexIndexes[0].v_i);
+                            textureIndexes.Add(vertexIndexes[0].t_i);
+                            normalsIndexes.Add(vertexIndexes[0].n_i);
                         }
                     }
                 }

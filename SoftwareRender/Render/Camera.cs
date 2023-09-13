@@ -40,7 +40,7 @@ namespace SoftwareRender.Render
         }
         private void UpdateView()
         {
-            Vector3 up = new(MathF.Cos(angleX) * MathF.Sin(angleY), MathF.Cos(angleY), MathF.Sin(angleX) * MathF.Sin(angleY));
+            Vector3 up = new(-MathF.Cos(angleX) * MathF.Sin(angleY), MathF.Cos(angleY), -MathF.Sin(angleX) * MathF.Sin(angleY));
             Vector3 t = new(MathF.Cos(angleX) * MathF.Cos(angleY), MathF.Sin(angleY), MathF.Sin(angleX) * MathF.Cos(angleY));
             t = Vector3.Normalize(t);
             Vector3 eye = target + t * distanceToTarget;
