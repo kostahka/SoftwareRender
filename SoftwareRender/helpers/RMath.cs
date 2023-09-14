@@ -13,10 +13,5 @@ namespace SoftwareRender.helpers
         {
             return a * t + b * (1 - t);
         }
-        static public T Interpolate<T>(T a, T b, float t)
-            where T : IFragmentData<T>
-        {
-            return a.Interpolate(b, t);
-        }
     }
 }

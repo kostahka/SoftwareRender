@@ -15,7 +15,6 @@ namespace SoftwareRender.RenderConveyor
     }
     internal class RenderConv
     {
-
         Matrix4x4 viewport;
         int viewportX;
         int viewportY;
@@ -25,6 +24,9 @@ namespace SoftwareRender.RenderConveyor
         public RenderConv(RenderCanvas canv) 
         {
             canvas = canv;
+            int viewportX = canvas.PixelWidth;
+            int viewportY = canvas.PixelHeight;
+            viewport = CreateViewport(0, 0, viewportX, viewportY, 0, 1);
         }
     
         public void SetShaderProgram(IShaderProgram shaderProgram)
@@ -100,48 +102,50 @@ namespace SoftwareRender.RenderConveyor
                 y += deltaY;
             }
         }
-        public void DrawData<T1, T2>(IVertexArrayObject<T1> vao, int vertCount)
-            where T1 : IVertexInputInfo<T1>, new() where T2 : IFragmentData<T2>
+        public void DrawData(Model model)
         {
             if(program != null)
             {
-                int triangleCountPerThread = (vertCount / 3) / 4;
+                int verticesCount = model.Vertices.Count;
+                int indexesCount = model.VerticesIndexes.Count;
+
+                int verticesCountPerThread = verticesCount / 4;
+                
                 Parallel.For(0, 4,
                     (int j) =>
                     {
-                        ShaderProgram<T2> shaderProgram = (ShaderProgram<T2>)program;
-                        T1 vInInfo = new();
-                        List<GCHandle?> vertexInPtrs = new();
-                        foreach (var type in vInInfo.getInParametrs())
-                        {
-                            vertexInPtrs.Add(null);
-                        }
+                        IShaderProgram shaderProgram = program;
 
-                        int startI = triangleCountPerThread * j;
-                        int endI = j == 3 ? vertCount / 3 : startI + triangleCountPerThread;
+                        int startI = verticesCountPerThread * j;
+                        int endI = j == 3 ? verticesCount : startI + verticesCountPerThread;
 
                         for (int i = startI; i < endI; i++)
                         {
-                            vao.GetInParametrPtrs(i * 3 + 0, ref vertexInPtrs);
-                            T2 v1 = shaderProgram.vertex(ref vertexInPtrs);
-                            vao.GetInParametrPtrs(i * 3 + 1, ref vertexInPtrs);
-                            T2 v2 = shaderProgram.vertex(ref vertexInPtrs);
-                            vao.GetInParametrPtrs(i * 3 + 2, ref vertexInPtrs);
-                            T2 v3 = shaderProgram.vertex(ref vertexInPtrs);
+                            model.OutVertices[i] = program.vertex(model.Vertices[i]);
 
-                            Vector4 vp1 = v1.GetVertexPos();
-                            Vector4 vp2 = v2.GetVertexPos();
-                            Vector4 vp3 = v3.GetVertexPos();
+                            model.OutVertices[i] /= model.OutVertices[i].W;
+                        }
+                    }
+                );
 
-                            vp1 /= vp1.W;
-                            vp2 /= vp2.W;
-                            vp3 /= vp3.W;
+                int triangleCountPerThread = (indexesCount / 3) / 4;
+                Parallel.For(0, 4,
+                    (int j) =>
+                    {
+                        int startI = triangleCountPerThread * j;
+                        int endI = j == 3 ? indexesCount / 3 : startI + triangleCountPerThread;
 
-                            if (triangleInOfCulling(vp1, vp2, vp3) && Cross((vp2 - vp1), (vp2 - vp3)).Z <= 0)
+                        for (int i = startI; i < endI; i++)
+                        {
+                            Vector4 v1 = model.OutVertices[model.VerticesIndexes[i*3+0]-1];
+                            Vector4 v2 = model.OutVertices[model.VerticesIndexes[i*3+1]-1];
+                            Vector4 v3 = model.OutVertices[model.VerticesIndexes[i*3+2]-1];
+
+                            if (triangleInOfCulling(v1, v2, v3) && Cross((v2 - v1), (v2 - v3)).Z <= 0)
                             {
-                                Vector4 uv1 = Vector4.Transform(vp1, viewport);
-                                Vector4 uv2 = Vector4.Transform(vp2, viewport);
-                                Vector4 uv3 = Vector4.Transform(vp3, viewport);
+                                Vector4 uv1 = Vector4.Transform(v1, viewport);
+                                Vector4 uv2 = Vector4.Transform(v2, viewport);
+                                Vector4 uv3 = Vector4.Transform(v3, viewport);
 
                                 /*
                                 canvas.DrawLineBresenhem((int)uv1.X, (int)uv1.Y, (int)uv2.X, (int)uv2.Y, new Vector3(0, 0, 0));
@@ -159,11 +163,13 @@ namespace SoftwareRender.RenderConveyor
             }
         }
 
+        /*
         public void SetViewport(int w, int h)
         {
             viewport = CreateViewport(0, 0, w, h, 0, 1);
             viewportX = w;
             viewportY = h;
         }
+        */
     }
 }

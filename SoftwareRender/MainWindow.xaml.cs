@@ -27,7 +27,7 @@ namespace SoftwareRender
             shader.view = camera.view;
             shader.proj = camera.proj;
 
-            conveyor.DrawData<ModelVertexInput,ModelFragmentData>(marioModel.vaos, marioModel.vertexCounts);
+            conveyor.DrawData(marioModel);
 
             rCanvas.SwapBuffers();
         }
@@ -37,7 +37,6 @@ namespace SoftwareRender
             InitializeComponent();
             marioModel = ObjParser.parse("../../../mario-obj/source/Mario.obj");
             conveyor = new RenderConv(rCanvas);
-            conveyor.SetViewport(1366, 780);
             shader = new();
             conveyor.SetShaderProgram(shader);
 

@@ -26,20 +26,24 @@ namespace SoftwareRender
                     List<int> texturesIndexes,
                     List<int> normalsIndexes)
         {
-                // Generate vertex buffers
-                VertexElementsBuffer<Vector4> verticesBuffer = new(vertices, verticesIndexes);
-
-                // Sum buffers
-                List<IVertexBuffer> vertexBuffers = new();
-                vertexBuffers.Add(verticesBuffer);
-
-                // Generate VAO
-                vaos = new VertexArrayObject<ModelVertexInput>(vertexBuffers);
-                vertexCounts = verticesIndexes.Count;
+            vertexCounts = verticesIndexes.Count;
+            Vertices = vertices;
+            TextureUVs = texture_uv;
+            Normals = normals;
+            VerticesIndexes = verticesIndexes;
+            TextureUVIndexes = texturesIndexes;
+            NormalIndexes = normalsIndexes;
+            OutVertices = new Vector4[vertices.Count];
         }
 
-        public int vertexCounts = new();
-        public VertexArrayObject<ModelVertexInput> vaos;
+        public int vertexCounts;
+        public Vector4[] OutVertices { get; private set; }
+        public List<Vector4> Vertices { get; private set; }
+        public List<Vector3> TextureUVs { get; private set; }
+        public List<Vector3> Normals { get; private set; }
+        public List<int> VerticesIndexes { get; private set; }
+        public List<int> TextureUVIndexes { get; private set; }
+        public List<int> NormalIndexes { get; private set; }
         public Matrix4x4 modelMatrix = Matrix4x4.Identity;
     }
 }

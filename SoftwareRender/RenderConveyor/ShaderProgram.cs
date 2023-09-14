@@ -8,13 +8,8 @@ namespace SoftwareRender.RenderConveyor
 {
     internal interface IShaderProgram
     {
-    }
-
-    internal abstract class ShaderProgram<T> : IShaderProgram
-        where T : IFragmentData<T>
-    {
-        public ShaderProgram() { }
-        abstract public T vertex(ref List<GCHandle?> dataPtrs);
-        abstract public Vector4 fragment(T data);
+        public Vector4 vertex(Vector4 pos);
+        public Vector3 normal(Vector3 pos);
+        public Vector4 fragment();
     }
 }
