@@ -26,7 +26,7 @@ namespace SoftwareRender
 
             shader.view = camera.view;
             shader.proj = camera.proj;
-            shader.lightPos = camera.eye;
+            shader.eyePos = camera.eye;
 
             conveyor.DrawData(marioModel);
 
@@ -42,6 +42,7 @@ namespace SoftwareRender
             conveyor.SetShaderProgram(shader);
 
             displayImg.Source = rCanvas.Source;
+            shader.lightPos = new(0, 8, 10);
 
             CompositionTarget.Rendering += RenderLoop;
         }
