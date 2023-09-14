@@ -24,6 +24,7 @@ namespace SoftwareRender.RenderConveyor
         IndexBuffer indexBuffer;
         FloatBuffer zBuffer;
         FloatBuffer[] interpolationBuffers;
+        FloatBuffer[] interpolationPerspectiveBuffers;
         public RenderConv(RenderCanvas canv) 
         {
             canvas = canv;
@@ -33,8 +34,10 @@ namespace SoftwareRender.RenderConveyor
             indexBuffer = new IndexBuffer(canvas.PixelWidth, canvas.PixelHeight);
             zBuffer = new FloatBuffer(canvas.PixelWidth, canvas.PixelHeight);
             interpolationBuffers = new FloatBuffer[3];
+            interpolationPerspectiveBuffers = new FloatBuffer[3];
             for(int i = 0; i < 3; i++)
             {
+                interpolationPerspectiveBuffers[i] = new FloatBuffer(canvas.PixelWidth, canvas.PixelHeight);
                 interpolationBuffers[i] = new FloatBuffer(canvas.PixelWidth, canvas.PixelHeight);
             }
         }
@@ -165,7 +168,7 @@ namespace SoftwareRender.RenderConveyor
                     endX = x0;
                     startZ = z1;
                     endZ = z0;
-                    t0 = 0;
+                    t0 = -1;
                 }
                 else
                 {
@@ -173,7 +176,7 @@ namespace SoftwareRender.RenderConveyor
                     endX = x1;
                     startZ = z0;
                     endZ = z1;
-                    t0 = -1;
+                    t0 = 0;
                 }
 
                 for (int x = Math.Max(startX, 0); x <= Math.Min(endX, indexBuffer.Width - 1); x++)
@@ -182,15 +185,18 @@ namespace SoftwareRender.RenderConveyor
                     float z = InterpolateZ(startZ, endZ, t);
                     if(zBuffer.GetValue(x, y) > z)
                     {
-                        float tt = t + t0;
                         indexBuffer.SetIndex(x, y, index);
                         zBuffer.SetValue(x, y, z);
-                        interpolationBuffers[i1].SetValue(x, y, tt * (1 - t0) / down.Z / z0);
-                        interpolationBuffers[i2].SetValue(x, y, (1 - tt) * (1 - t1) / middle.Z / z0);
-                        interpolationBuffers[i3].SetValue(x, y, (tt * t0 + (1 - tt) * t1) / up.Z / z0);
+                        interpolationBuffers[i1].SetValue(x, y, t * (1 - t0));
+                        interpolationBuffers[i2].SetValue(x, y, (1 - t) * (1 - t1) );
+                        interpolationBuffers[i3].SetValue(x, y, (t * t0 + (1 - t) * t1));
+                        interpolationPerspectiveBuffers[i1].SetValue(x, y, t * (1 - t0) / down.Z / z);
+                        interpolationPerspectiveBuffers[i2].SetValue(x, y, (1 - t) * (1 - t1) / middle.Z / z);
+                        interpolationPerspectiveBuffers[i3].SetValue(x, y, (t * t0 + (1 - t) * t1) / up.Z / z);
                     }
                 }
             }
+
             for (int y = Math.Max(downY, 0); y < Math.Min(midY, indexBuffer.Height); y++)
             {
                 float t1;
@@ -225,7 +231,7 @@ namespace SoftwareRender.RenderConveyor
                     endX = x0;
                     startZ = z1;
                     endZ = z0;
-                    t0 = 0;
+                    t0 = -1;
                 }
                 else
                 {
@@ -233,7 +239,7 @@ namespace SoftwareRender.RenderConveyor
                     endX = x1;
                     startZ = z0;
                     endZ = z1;
-                    t0 = -1;
+                    t0 = 0;
                 }
 
                 for (int x = Math.Max(startX, 0); x <= Math.Min(endX, indexBuffer.Width - 1); x++)
@@ -242,15 +248,18 @@ namespace SoftwareRender.RenderConveyor
                     float z = InterpolateZ(startZ, endZ, t);
                     if (zBuffer.GetValue(x, y) > z)
                     {
-                        float tt = t + t0;
                         indexBuffer.SetIndex(x, y, index);
                         zBuffer.SetValue(x, y, z);
-                        interpolationBuffers[i1].SetValue(x, y, tt * (1 - t0) / up.Z / z0);
-                        interpolationBuffers[i2].SetValue(x, y, (1 - tt) * (1 - t1) / middle.Z / z0);
-                        interpolationBuffers[i3].SetValue(x, y, (tt * t0 + (1 - tt) * t1) / down.Z / z0);
+                        interpolationBuffers[i3].SetValue(x, y, t * (1 - t0));
+                        interpolationBuffers[i2].SetValue(x, y, (1 - t) * (1 - t1));
+                        interpolationBuffers[i1].SetValue(x, y, (t * t0 + (1 - t) * t1));
+                        interpolationPerspectiveBuffers[i3].SetValue(x, y, t * (1 - t0) / up.Z / z);
+                        interpolationPerspectiveBuffers[i2].SetValue(x, y, (1 - t) * (1 - t1) / middle.Z / z);
+                        interpolationPerspectiveBuffers[i1].SetValue(x, y, (t * t0 + (1 - t) * t1) / down.Z / z);
                     }
                 }
             }
+
         }
         public static Matrix4x4 CreateViewport(float x, float y, float width, float height, float minDepth, float maxDepth)
         {
@@ -419,13 +428,16 @@ namespace SoftwareRender.RenderConveyor
                                 Vector4 v2 = model.OutVertices[model.VerticesIndexes[index + 1] - 1];
                                 Vector4 v3 = model.OutVertices[model.VerticesIndexes[index + 2] - 1];
 
-                                Vector4 v = v1 * k1 + v2 * k2 + v3 * k3;
+                                //Vector4 v = v1 * k1 + v2 * k2 + v3 * k3;
+                                Vector4 v = (v1 + v2 + v3) / 3;
 
                                 Vector3 n1 = model.OutNormals[model.NormalIndexes[index + 0] - 1];
                                 Vector3 n2 = model.OutNormals[model.NormalIndexes[index + 1] - 1];
                                 Vector3 n3 = model.OutNormals[model.NormalIndexes[index + 2] - 1];
 
-                                Vector3 n = n1 * k1 + n2 * k2 + n3 * k3;
+                                //Vector3 n = n1 * k1 + n2 * k2 + n3 * k3;
+                                Vector3 n = (n1 + n2 + n3) / 3;
+                                //Vector3 n = n1;
 
                                 Vector3 color = program.fragment(v, n);
 

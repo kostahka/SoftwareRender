@@ -26,6 +26,7 @@ namespace SoftwareRender
 
             shader.view = camera.view;
             shader.proj = camera.proj;
+            shader.lightPos = camera.eye;
 
             conveyor.DrawData(marioModel);
 

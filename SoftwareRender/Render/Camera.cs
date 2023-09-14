@@ -11,6 +11,7 @@ namespace SoftwareRender.Render
     {
         public Matrix4x4 proj { get; private set; }
         public Matrix4x4 view { get; private set; }
+        public Vector3 eye { get; private set; }
 
         float FOV = (float)Math.PI / 4;
         float aspect = 1366/768f;
@@ -43,7 +44,7 @@ namespace SoftwareRender.Render
             Vector3 up = new(-MathF.Cos(angleX) * MathF.Sin(angleY), MathF.Cos(angleY), -MathF.Sin(angleX) * MathF.Sin(angleY));
             Vector3 t = new(MathF.Cos(angleX) * MathF.Cos(angleY), MathF.Sin(angleY), MathF.Sin(angleX) * MathF.Cos(angleY));
             t = Vector3.Normalize(t);
-            Vector3 eye = target + t * distanceToTarget;
+            eye = target + t * distanceToTarget;
             view = Matrix4x4.CreateLookAt(eye, target, up);
         }
         private void UpdateProj()
