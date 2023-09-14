@@ -22,7 +22,10 @@ namespace SoftwareRender.Rasterization
         {
             return buffer[x + y * Width];
         }
-
+        public float GetValue(int i)
+        {
+            return buffer[i];
+        }
         public void SetValue(int x, int y, float val)
         {
             buffer[x + y * Width] = val;

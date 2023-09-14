@@ -34,10 +34,14 @@ namespace SoftwareRender
             TextureUVIndexes = texturesIndexes;
             NormalIndexes = normalsIndexes;
             OutVertices = new Vector4[vertices.Count];
+            OutNormalizedVertices = new Vector4[vertices.Count];
+            OutNormals = new Vector3[normals.Count];
         }
 
         public int vertexCounts;
         public Vector4[] OutVertices { get; private set; }
+        public Vector4[] OutNormalizedVertices { get; private set; }
+        public Vector3[] OutNormals { get; private set; }
         public List<Vector4> Vertices { get; private set; }
         public List<Vector3> TextureUVs { get; private set; }
         public List<Vector3> Normals { get; private set; }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.CodeDom.Compiler;
 using System.Numerics;
 using System.Windows.Documents;
 using System.Windows.Media;
@@ -54,6 +55,15 @@ namespace SoftwareRender.Rasterization
         public void SetPixel(int x, int y, Vector3 color)
         {
             byte* pixel = GetPixelAddress(x, y);
+            pixel[0] = (byte)(255 * color.Z);
+            pixel[1] = (byte)(255 * color.Y);
+            pixel[2] = (byte)(255 * color.X);
+            pixel[3] = 255;
+        }
+
+        public void SetPixel(int index, Vector3 color)
+        {
+            byte* pixel = BackBuffer + index * BytesPerPixel;
             pixel[0] = (byte)(255 * color.Z);
             pixel[1] = (byte)(255 * color.Y);
             pixel[2] = (byte)(255 * color.X);

@@ -23,14 +23,20 @@ namespace SoftwareRender.RenderConveyor
         RenderCanvas canvas;
         IndexBuffer indexBuffer;
         FloatBuffer zBuffer;
+        FloatBuffer[] interpolationBuffers;
         public RenderConv(RenderCanvas canv) 
         {
             canvas = canv;
-            int viewportX = canvas.PixelWidth;
-            int viewportY = canvas.PixelHeight;
+            viewportX = canvas.PixelWidth;
+            viewportY = canvas.PixelHeight;
             viewport = CreateViewport(0, 0, viewportX, viewportY, 0, 1);
             indexBuffer = new IndexBuffer(canvas.PixelWidth, canvas.PixelHeight);
             zBuffer = new FloatBuffer(canvas.PixelWidth, canvas.PixelHeight);
+            interpolationBuffers = new FloatBuffer[3];
+            for(int i = 0; i < 3; i++)
+            {
+                interpolationBuffers[i] = new FloatBuffer(canvas.PixelWidth, canvas.PixelHeight);
+            }
         }
     
         public void SetShaderProgram(IShaderProgram shaderProgram)
@@ -54,20 +60,29 @@ namespace SoftwareRender.RenderConveyor
             Vector4 middle;
             Vector4 down;
 
+            int i1;
+            int i2;
+            int i3;
+
             if (uv1.Y > uv2.Y)
             {
                 if (uv1.Y > uv3.Y)
                 {
                     up = uv1;
+                    i3 = 0;
                     if (uv2.Y > uv3.Y)
                     {
                         middle = uv2;
                         down = uv3;
+                        i2 = 1;
+                        i1 = 2;
                     }
                     else
                     {
                         middle = uv3;
                         down = uv2;
+                        i2 = 2;
+                        i1 = 1;
                     }
                 }
                 else
@@ -75,6 +90,9 @@ namespace SoftwareRender.RenderConveyor
                     up = uv3;
                     middle = uv1;
                     down = uv2;
+                    i3 = 2;
+                    i2 = 0;
+                    i1 = 1;
                 }
             }
             else
@@ -82,15 +100,20 @@ namespace SoftwareRender.RenderConveyor
                 if (uv2.Y > uv3.Y)
                 {
                     up = uv2;
+                    i3 = 1;
                     if (uv1.Y > uv3.Y)
                     {
                         middle = uv1;
                         down = uv3;
+                        i2 = 0;
+                        i1 = 2;
                     }
                     else
                     {
                         middle = uv3;
                         down = uv1;
+                        i2 = 2;
+                        i1 = 0;
                     }
                 }
                 else
@@ -98,19 +121,39 @@ namespace SoftwareRender.RenderConveyor
                     up = uv3;
                     middle = uv2;
                     down = uv1;
+                    i3 = 2;
+                    i2 = 1;
+                    i1 = 0;
                 }
             }
 
-            for(int y = Math.Max((int)middle.Y, 0); y <= Math.Min((int)up.Y, indexBuffer.Height - 1); y++)
+            int midY = (int)MathF.Floor(middle.Y);
+            int upY = (int)MathF.Floor(up.Y);
+            int downY = (int)MathF.Floor(down.Y);
+
+            for (int y = Math.Max(midY, 0); y <= Math.Min(upY, indexBuffer.Height - 1); y++)
             {
-                float deltaUp = y - up.Y;
-                float t1 = (down.Y - up.Y) / (deltaUp);
-                float t2 = (middle.Y - up.Y) / (deltaUp);
-                int x0 = (int)(up.X + (down.X - up.X) * t1);
-                int x1 = (int)(up.X + (middle.X - up.X) * t2);
+                float t1;
+                float t2;
+                if (y == upY)
+                {
+                    t1 = 0;
+                    t2 = 0;
+                }
+                else
+                {
+                    float deltaUp = y - upY;
+                    t1 = (deltaUp) / (downY - upY);
+                    t2 = (deltaUp) / (midY - upY);
+                }
+                
+                int x0 = (int)MathF.Floor(up.X + (down.X - up.X) * t1);
+                int x1 = (int)MathF.Floor(up.X + (middle.X - up.X) * t2);
 
                 float z0 = InterpolateZ(up.Z, down.Z, t1);
                 float z1 = InterpolateZ(up.Z, middle.Z, t2);
+
+                float t0;
 
                 int startX;
                 int endX;
@@ -122,6 +165,7 @@ namespace SoftwareRender.RenderConveyor
                     endX = x0;
                     startZ = z1;
                     endZ = z0;
+                    t0 = 0;
                 }
                 else
                 {
@@ -129,6 +173,7 @@ namespace SoftwareRender.RenderConveyor
                     endX = x1;
                     startZ = z0;
                     endZ = z1;
+                    t0 = -1;
                 }
 
                 for (int x = Math.Max(startX, 0); x <= Math.Min(endX, indexBuffer.Width - 1); x++)
@@ -137,21 +182,38 @@ namespace SoftwareRender.RenderConveyor
                     float z = InterpolateZ(startZ, endZ, t);
                     if(zBuffer.GetValue(x, y) > z)
                     {
+                        float tt = t + t0;
                         indexBuffer.SetIndex(x, y, index);
                         zBuffer.SetValue(x, y, z);
+                        interpolationBuffers[i1].SetValue(x, y, tt * (1 - t0) / down.Z / z0);
+                        interpolationBuffers[i2].SetValue(x, y, (1 - tt) * (1 - t1) / middle.Z / z0);
+                        interpolationBuffers[i3].SetValue(x, y, (tt * t0 + (1 - tt) * t1) / up.Z / z0);
                     }
                 }
             }
-            for (int y = Math.Max((int)down.Y, 0); y < Math.Min((int)middle.Y, indexBuffer.Height); y++)
+            for (int y = Math.Max(downY, 0); y < Math.Min(midY, indexBuffer.Height); y++)
             {
-                float deltaDown = y - down.Y;
-                float t1 = (up.Y - down.Y) / (deltaDown);
-                float t2 = (middle.Y - down.Y) / (deltaDown);
-                int x0 = (int)(down.X + (up.X - down.X) * t1);
-                int x1 = (int)(down.X + (middle.X - down.X) * t2);
+                float t1;
+                float t2;
+                if (y == downY)
+                {
+                    t1 = 0;
+                    t2 = 0;
+                }
+                else
+                {
+                    float deltaDown = y - downY;
+                    t1 = (deltaDown) / (upY - downY);
+                    t2 = (deltaDown) / (midY - downY);
+                }
+
+                int x0 = (int)MathF.Floor(down.X + (up.X - down.X) * t1);
+                int x1 = (int)MathF.Floor(down.X + (middle.X - down.X) * t2);
 
                 float z0 = InterpolateZ(down.Z, up.Z, t1);
                 float z1 = InterpolateZ(down.Z, middle.Z, t2);
+
+                float t0;
 
                 int startX;
                 int endX;
@@ -163,6 +225,7 @@ namespace SoftwareRender.RenderConveyor
                     endX = x0;
                     startZ = z1;
                     endZ = z0;
+                    t0 = 0;
                 }
                 else
                 {
@@ -170,6 +233,7 @@ namespace SoftwareRender.RenderConveyor
                     endX = x1;
                     startZ = z0;
                     endZ = z1;
+                    t0 = -1;
                 }
 
                 for (int x = Math.Max(startX, 0); x <= Math.Min(endX, indexBuffer.Width - 1); x++)
@@ -178,8 +242,12 @@ namespace SoftwareRender.RenderConveyor
                     float z = InterpolateZ(startZ, endZ, t);
                     if (zBuffer.GetValue(x, y) > z)
                     {
+                        float tt = t + t0;
                         indexBuffer.SetIndex(x, y, index);
                         zBuffer.SetValue(x, y, z);
+                        interpolationBuffers[i1].SetValue(x, y, tt * (1 - t0) / up.Z / z0);
+                        interpolationBuffers[i2].SetValue(x, y, (1 - tt) * (1 - t1) / middle.Z / z0);
+                        interpolationBuffers[i3].SetValue(x, y, (tt * t0 + (1 - tt) * t1) / down.Z / z0);
                     }
                 }
             }
@@ -253,27 +321,45 @@ namespace SoftwareRender.RenderConveyor
                 int verticesCount = model.Vertices.Count;
                 int indexesCount = model.VerticesIndexes.Count;
 
+                // Vertices
                 int verticesCountPerThread = verticesCount / 4;
                 
                 Parallel.For(0, 4,
                     (int j) =>
                     {
-                        IShaderProgram shaderProgram = program;
-
                         int startI = verticesCountPerThread * j;
                         int endI = j == 3 ? verticesCount : startI + verticesCountPerThread;
 
                         for (int i = startI; i < endI; i++)
                         {
-                            model.OutVertices[i] = program.vertex(model.Vertices[i]);
-
+                            model.OutVertices[i] = program.vertexToWorld(model.Vertices[i]);
                             model.OutVertices[i] /= model.OutVertices[i].W;
+
+                            model.OutNormalizedVertices[i] = program.vertexNormilized(model.OutVertices[i]);
+                            model.OutNormalizedVertices[i] /= model.OutNormalizedVertices[i].W;
                         }
                     }
                 );
 
-                //indexBuffer.ClearBuffer();
-                //zBuffer.ClearBuffer(1);
+                // Normals
+                int normalsCount = model.Normals.Count;
+                int normalsCountPerThread =  normalsCount / 4;
+
+                Parallel.For(0, 4,
+                    (int j) =>
+                    {
+                        int startI = normalsCountPerThread * j;
+                        int endI = j == 3 ? normalsCount : startI + normalsCountPerThread;
+
+                        for (int i = startI; i < endI; i++)
+                        {
+                            model.OutNormals[i] = program.normal(model.Normals[i]);
+                        }
+                    }
+                );
+
+                indexBuffer.ClearBuffer();
+                zBuffer.ClearBuffer(1);
 
                 int triangleCountPerThread = (indexesCount / 3) / 4;
                 Parallel.For(0, 4,
@@ -284,9 +370,9 @@ namespace SoftwareRender.RenderConveyor
 
                         for (int i = startI; i < endI; i++)
                         {
-                            Vector4 v1 = model.OutVertices[model.VerticesIndexes[i*3+0]-1];
-                            Vector4 v2 = model.OutVertices[model.VerticesIndexes[i*3+1]-1];
-                            Vector4 v3 = model.OutVertices[model.VerticesIndexes[i*3+2]-1];
+                            Vector4 v1 = model.OutNormalizedVertices[model.VerticesIndexes[i*3+0]-1];
+                            Vector4 v2 = model.OutNormalizedVertices[model.VerticesIndexes[i*3+1]-1];
+                            Vector4 v3 = model.OutNormalizedVertices[model.VerticesIndexes[i*3+2]-1];
 
                             if (triangleInOfCulling(v1, v2, v3) && Cross((v2 - v1), (v2 - v3)).Z <= 0)
                             {
@@ -300,12 +386,50 @@ namespace SoftwareRender.RenderConveyor
                                 canvas.DrawLineBresenhem((int)uv1.X, (int)uv1.Y, (int)uv3.X, (int)uv3.Y, new Vector3(0, 0, 0));
                                 */
 
-                                DrawDDALine(uv1.X, uv1.Y, uv2.X, uv2.Y, new Vector3(0, 0, 0));
-                                DrawDDALine(uv3.X, uv3.Y, uv2.X, uv2.Y, new Vector3(0, 0, 0));
-                                DrawDDALine(uv1.X, uv1.Y, uv3.X, uv3.Y, new Vector3(0, 0, 0));
+                                //DrawDDALine(uv1.X, uv1.Y, uv2.X, uv2.Y, new Vector3(0, 0, 0));
+                                //DrawDDALine(uv3.X, uv3.Y, uv2.X, uv2.Y, new Vector3(0, 0, 0));
+                                //DrawDDALine(uv1.X, uv1.Y, uv3.X, uv3.Y, new Vector3(0, 0, 0));
                                 
-                                //DrawTriangleIndex(uv1, uv2, uv3, i + 1);
+                                DrawTriangleIndex(uv1, uv2, uv3, i + 1);
                                 // TODO: Fragment process
+                            }
+                        }
+                    }
+                );
+
+                int pixelsPerThread = viewportX * viewportY / 4;
+                Parallel.For(0, 4,
+                    (int j) =>
+                    {
+                        int startI = pixelsPerThread * j;
+                        int endI = j == 3 ? viewportX * viewportY : startI + pixelsPerThread;
+
+                        for (int i = startI; i < endI; i++)
+                        {
+                            int triangleIndex = indexBuffer.GetIndex(i);
+                            if(triangleIndex != 0)
+                            {
+                                int index = (triangleIndex-1) * 3;
+
+                                float k1 = interpolationBuffers[0].GetValue(i);
+                                float k2 = interpolationBuffers[1].GetValue(i);
+                                float k3 = interpolationBuffers[2].GetValue(i);
+
+                                Vector4 v1 = model.OutVertices[model.VerticesIndexes[index + 0] - 1];
+                                Vector4 v2 = model.OutVertices[model.VerticesIndexes[index + 1] - 1];
+                                Vector4 v3 = model.OutVertices[model.VerticesIndexes[index + 2] - 1];
+
+                                Vector4 v = v1 * k1 + v2 * k2 + v3 * k3;
+
+                                Vector3 n1 = model.OutNormals[model.NormalIndexes[index + 0] - 1];
+                                Vector3 n2 = model.OutNormals[model.NormalIndexes[index + 1] - 1];
+                                Vector3 n3 = model.OutNormals[model.NormalIndexes[index + 2] - 1];
+
+                                Vector3 n = n1 * k1 + n2 * k2 + n3 * k3;
+
+                                Vector3 color = program.fragment(v, n);
+
+                                canvas.SetPixel(i, color);
                             }
                         }
                     }

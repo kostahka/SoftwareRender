@@ -8,21 +8,24 @@ namespace SoftwareRender.Render
         public Matrix4x4 model { get; set; } = Matrix4x4.Identity;
         public Matrix4x4 proj { get; set; } = Matrix4x4.Identity;
         public Matrix4x4 view { get; set; } = Matrix4x4.Identity;
-        public Vector4 fragment()
+
+        public Vector3 fragment(Vector4 pos, Vector3 normal)
         {
-            return new(1, 1, 1, 1);
+            return new(0, 0, 0);
         }
 
         public Vector3 normal(Vector3 norm)
         {
             return norm;
         }
-        public Vector4 vertex(Vector4 pos)
+        public Vector4 vertexNormilized(Vector4 pos)
         {
-            Matrix4x4 mvpMatrix = model * view * proj;
-            Vector4 endPos = Vector4.Transform(pos, mvpMatrix);
+            return Vector4.Transform(pos, model);
+        }
 
-            return endPos;
+        public Vector4 vertexToWorld(Vector4 pos)
+        {
+            return Vector4.Transform(pos, view * proj);
         }
     }
 }

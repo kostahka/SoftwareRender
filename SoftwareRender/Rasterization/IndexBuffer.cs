@@ -25,7 +25,10 @@ namespace SoftwareRender.Rasterization
         {
             return buffer[x + y * Width];
         }
-
+        public int GetIndex(int i)
+        {
+            return buffer[i];
+        }
         public void SetIndex(int x, int y, int index)
         {
             buffer[x + y * Width] = index;
