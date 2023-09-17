@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SoftwareRender.Render;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -11,6 +12,9 @@ namespace SoftwareRender.RenderConveyor
         public Vector4 vertexToWorld(Vector4 pos);
         public Vector4 vertexNormilized(Vector4 pos);
         public Vector3 normal(Vector3 pos);
-        public Vector3 fragment(Vector4 pos, Vector3 normal);
+        public Vector3 fragmentP(Material material, Vector4 pos);
+        public Vector3 fragmentPT(Material material, Vector4 pos, Vector3 textUV);
+        public Vector3 fragmentPN(Material material, Vector4 pos, Vector3 normal);
+        public Vector3 fragmentPTN(Material material, Vector4 pos, Vector3 textUV, Vector3 normal);
     }
 }

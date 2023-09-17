@@ -1,8 +1,10 @@
-﻿using SoftwareRender.RenderConveyor;
+﻿using SoftwareRender.Render;
+using SoftwareRender.RenderConveyor;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Numerics;
 using static SoftwareRender.Model;
 
@@ -10,6 +12,137 @@ namespace SoftwareRender
 {
     internal class ObjParser
     {
+        static Texture? ParseTextureLine(string line, string mat_path)
+        {
+            string[] tokens = line.Split().Where(s => s != "").ToArray();
+
+            string? path = System.IO.Path.GetDirectoryName(mat_path);
+            if (path == null)
+                return null;
+
+            path += "\\" + tokens[1];
+
+            return new Texture(path);
+        }
+        static Vector3 ParseVectorLine(string line)
+        {
+            string[] tokens = line.Split().Where(s => s != "").ToArray();
+
+            float x = ParseFloat(tokens[1]);
+            float y = ParseFloat(tokens[2]);
+            float z = ParseFloat(tokens[3]);
+            Vector3 res = new Vector3(x, y, z);
+            return res;
+        }
+        static Dictionary<string, Material> ParseMaterials(string file_path)
+        {
+            Dictionary<string, Material> materials = new Dictionary<string, Material>();
+
+            if (!System.IO.File.Exists(file_path))
+                return materials;
+
+            using (var reader = new StreamReader(stream: new FileStream(file_path, FileMode.Open)))
+            {
+                string? materialName = null;
+                Vector3 valAmbient = new(0);
+                Vector3 valDiffuse = new(0);
+                Vector3 valSpecullar = new(0);
+                Vector3 valNormal = new(1);
+                Texture? texAmbient = null;
+                Texture? texDiffuse = null;
+                Texture? texSpecullar = null;
+                Texture? texNormal = null;
+                float SpecNs = 0.0f;
+
+                while (!reader.EndOfStream)
+                {
+                    var line = reader.ReadLine();
+                    if (line == null)
+                        break;
+
+                    line = line.Trim();
+
+                    if (line.StartsWith("newmtl "))
+                    {
+                        if (materialName != null)
+                        {
+                            MaterialProperty Ambient = texAmbient == null ?
+                                new ConstMaterialProperty(valAmbient) : new TexturedMaterialProperty(texAmbient, valAmbient);
+
+                            MaterialProperty Diffuse = texDiffuse == null ?
+                                new ConstMaterialProperty(valDiffuse) : new TexturedMaterialProperty(texDiffuse, valDiffuse);
+
+                            MaterialProperty Specullar = texSpecullar == null ?
+                                new ConstMaterialProperty(valSpecullar) : new TexturedMaterialProperty(texSpecullar, valSpecullar);
+
+                            MaterialProperty Normal = texNormal == null ?
+                                new ConstMaterialProperty(valNormal) : new TexturedMaterialProperty(texNormal, valNormal);
+
+                            materials[materialName] = new Material(Ambient, Diffuse, Specullar, Normal, SpecNs);
+                            valNormal = new(0);
+                            valNormal = new(0);
+                            valSpecullar = new(0);
+                            valNormal = new(1);
+                            texAmbient = null;
+                            texDiffuse = null;
+                            texSpecullar = null;
+                            texNormal = null;
+                            SpecNs = 0.0f;
+                            materialName = null;
+                        }
+
+                        string[] tokens = line.Split().Where(s => s != "").ToArray();
+                        materialName = tokens[1];
+                    }
+                    else if (line.StartsWith("Ka "))
+                    {
+                        valAmbient = ParseVectorLine(line);
+                    }
+                    else if (line.StartsWith("Kd "))
+                    { 
+                        valDiffuse = ParseVectorLine(line);
+                    }
+                    else if (line.StartsWith("Ks "))
+                    {
+                        valSpecullar = ParseVectorLine(line);
+                    }
+                    else if (line.StartsWith("map_Ka "))
+                    {
+                        texAmbient = ParseTextureLine(line, file_path);
+                    }
+                    else if (line.StartsWith("map_Kd "))
+                    {
+                        texDiffuse = ParseTextureLine(line, file_path);
+                    }
+                    else if (line.StartsWith("map_Ks "))
+                    {
+                        texSpecullar = ParseTextureLine(line, file_path);
+                    }
+                    else if (line.StartsWith("map_bump ") || line.StartsWith("bump "))
+                    {
+                        texNormal = ParseTextureLine(line, file_path);
+                    }
+                }
+
+                if (materialName != null)
+                {
+                    MaterialProperty Ambient = texAmbient == null ?
+                        new ConstMaterialProperty(valAmbient) : new TexturedMaterialProperty(texAmbient, valAmbient);
+
+                    MaterialProperty Diffuse = texDiffuse == null ?
+                        new ConstMaterialProperty(valDiffuse) : new TexturedMaterialProperty(texDiffuse, valDiffuse);
+
+                    MaterialProperty Specullar = texSpecullar == null ?
+                        new ConstMaterialProperty(valSpecullar) : new TexturedMaterialProperty(texSpecullar, valSpecullar);
+
+                    MaterialProperty Normal = texNormal == null ?
+                        new ConstMaterialProperty(valNormal) : new TexturedMaterialProperty(texNormal, valNormal);
+
+                    materials[materialName] = new Material(Ambient, Diffuse, Specullar, Normal, SpecNs);
+                }
+            }
+            return materials;
+        }
         static float ParseFloat(string text)
         {
             float res = 0;
@@ -22,14 +155,19 @@ namespace SoftwareRender
             catch { }
             return res;
         }
-        public static Model parse(String file_path)
+        public static Model parse(string file_path)
         {
             List<Vector4> vertices = new List<Vector4>();
             List<Vector3> texture_uv = new List<Vector3>();
             List<Vector3> normals = new List<Vector3>();
-            List<int> verticesIndexes = new ();
-            List<int> textureIndexes = new ();
-            List<int> normalsIndexes = new ();
+            List<Triangle> triangles = new List<Triangle>();
+            Material currentMaterial = new();
+            
+            Dictionary<string, Material> materials = new();
+
+            if(!System.IO.File.Exists(file_path))
+                return new Model(vertices, texture_uv, normals, triangles);
+
             using (var reader = new StreamReader(stream: new FileStream(file_path, FileMode.Open)))
             {
                 while (!reader.EndOfStream)
@@ -38,9 +176,26 @@ namespace SoftwareRender
                     if (line == null)
                         break;
 
-                    if (line.StartsWith("v "))
+                    line = line.Trim();
+
+                    if (line.StartsWith("mtllib "))
                     {
-                        var tokens = line.Split(' ');
+                        string[] tokens = line.Split().Where(s => s != "").ToArray();
+
+                        string? path = System.IO.Path.GetDirectoryName(file_path);
+                        if(path != null)
+                        {
+                            path += "\\" + tokens[1];
+                            Dictionary<string, Material> newMaterials = ParseMaterials(path);
+                            foreach(var matName in newMaterials.Keys)
+                            {
+                                materials[matName] = newMaterials[matName];
+                            }
+                        }
+                    }
+                    else if (line.StartsWith("v "))
+                    {
+                        string[] tokens = line.Split().Where(s => s != "").ToArray();
                         float x = ParseFloat(tokens[1]);
                         float y = ParseFloat(tokens[2]);
                         float z = ParseFloat(tokens[3]);
@@ -56,7 +211,7 @@ namespace SoftwareRender
                     }
                     else if(line.StartsWith("vt "))
                     {
-                        var tokens = line.Split(' ');
+                        string[] tokens = line.Split().Where(s => s != "").ToArray();
                         Vector3 tex_uv = new Vector3(0);
                         tex_uv.X = ParseFloat(tokens[1]);
                         if(tokens.Length > 2)
@@ -71,15 +226,19 @@ namespace SoftwareRender
                     }
                     else if (line.StartsWith("vn "))
                     {
-                        var tokens = line.Split(' ');
-                        var x = ParseFloat(tokens[1]);
-                        var y = ParseFloat(tokens[2]);
-                        var z = ParseFloat(tokens[3]);
-                        normals.Add(new Vector3(x, y, z));
+                        normals.Add(ParseVectorLine(line));
+                    }
+                    else if (line.StartsWith("usemtl "))
+                    {
+                        string[] tokens = line.Split().Where(s => s != "").ToArray();
+
+                        string materialName = tokens[1];
+                        if(materials.ContainsKey(materialName))
+                            currentMaterial = materials[materialName];
                     }
                     else if (line.StartsWith("f "))
                     {
-                        var tokens = line.Split(' ');
+                        string[] tokens = line.Split().Where(s => s != "").ToArray();
 
                         PrimitiveType type = tokens.Length == 4 ? PrimitiveType.triangles : PrimitiveType.quads;
 
@@ -87,8 +246,9 @@ namespace SoftwareRender
                         for (int i = 1; i < tokens.Length; i++)
                         {
                             var str_indices = tokens[i].Split('/');
-                            vertexIndexes[i - 1] = new VertexIndexes(int.Parse(str_indices[0]));
-                            if(str_indices.Length > 1 && str_indices[1].Length != 0)
+
+                            vertexIndexes[i- 1] = new VertexIndexes(int.Parse(str_indices[0]));
+                            if (str_indices.Length > 1 && str_indices[1].Length != 0)
                             {
                                 vertexIndexes[i - 1].t_i = int.Parse(str_indices[1]);
                             }
@@ -97,51 +257,29 @@ namespace SoftwareRender
                                 vertexIndexes[i - 1].n_i = int.Parse(str_indices[2]);
                             }
                         }
+
                         if (type == PrimitiveType.triangles)
                         {
-                            verticesIndexes.Add(vertexIndexes[0].v_i);
-                            textureIndexes.Add(vertexIndexes[0].t_i);
-                            normalsIndexes.Add(vertexIndexes[0].n_i);
-
-                            verticesIndexes.Add(vertexIndexes[1].v_i);
-                            textureIndexes.Add(vertexIndexes[1].t_i);
-                            normalsIndexes.Add(vertexIndexes[1].n_i);
-
-                            verticesIndexes.Add(vertexIndexes[2].v_i);
-                            textureIndexes.Add(vertexIndexes[2].t_i);
-                            normalsIndexes.Add(vertexIndexes[2].n_i);
+                            triangles.Add(new(currentMaterial.Clone(), vertexIndexes));
                         }
                         else if (type == PrimitiveType.quads)
                         {
-                            verticesIndexes.Add(vertexIndexes[0].v_i);
-                            textureIndexes.Add(vertexIndexes[0].t_i);
-                            normalsIndexes.Add(vertexIndexes[0].n_i);
-
-                            verticesIndexes.Add(vertexIndexes[1].v_i);
-                            textureIndexes.Add(vertexIndexes[1].t_i);
-                            normalsIndexes.Add(vertexIndexes[1].n_i);
-
-                            verticesIndexes.Add(vertexIndexes[2].v_i);
-                            textureIndexes.Add(vertexIndexes[2].t_i);
-                            normalsIndexes.Add(vertexIndexes[2].n_i);
-
-                            verticesIndexes.Add(vertexIndexes[2].v_i);
-                            textureIndexes.Add(vertexIndexes[2].t_i);
-                            normalsIndexes.Add(vertexIndexes[2].n_i);
-
-                            verticesIndexes.Add(vertexIndexes[3].v_i);
-                            textureIndexes.Add(vertexIndexes[3].t_i);
-                            normalsIndexes.Add(vertexIndexes[3].n_i);
-
-                            verticesIndexes.Add(vertexIndexes[0].v_i);
-                            textureIndexes.Add(vertexIndexes[0].t_i);
-                            normalsIndexes.Add(vertexIndexes[0].n_i);
+                            VertexIndexes[] firstTriangle = new VertexIndexes[3] 
+                            {
+                                vertexIndexes[0], vertexIndexes[1], vertexIndexes[2]
+                            };
+                            VertexIndexes[] secondTriangle = new VertexIndexes[3]
+                            {
+                                vertexIndexes[2], vertexIndexes[3], vertexIndexes[0]
+                            };
+                            triangles.Add(new(currentMaterial.Clone(), firstTriangle));
+                            triangles.Add(new(currentMaterial.Clone(), secondTriangle));
                         }
                     }
                 }
             }
 
-            return new Model(vertices, texture_uv, normals, verticesIndexes, textureIndexes, normalsIndexes);
+            return new Model(vertices, texture_uv, normals, triangles);
         }
     }
 }

@@ -1,0 +1,102 @@
+# 3ds Max Wavefront OBJ Exporter v0.97b - (c)2007 guruware
+# File Created: 05.08.2014 23:45:11
+
+newmtl Material__45
+	Ns 9.999999
+	Ni 1.500000
+	d 1.000000
+	Tr 0.000000
+	Tf 1.000000 1.000000 1.000000 
+	illum 2
+	Ka 0.588000 0.588000 0.588000
+	Kd 0.588000 0.588000 0.588000
+	Ks 0.000000 0.000000 0.000000
+	Ke 0.000000 0.000000 0.000000
+	map_Ka RB_Hardshell_Wheel_TEXSET_D.tga
+	map_Kd RB_Hardshell_Wheel_TEXSET_D.tga
+
+newmtl Material__46
+	Ns 9.999999
+	Ni 1.500000
+	d 1.000000
+	Tr 0.000000
+	Tf 1.000000 1.000000 1.000000 
+	illum 2
+	Ka 0.588000 0.588000 0.588000
+	Kd 0.588000 0.588000 0.588000
+	Ks 0.000000 0.000000 0.000000
+	Ke 0.000000 0.000000 0.000000
+	map_Ka RB_Hardshell_Chest_TEXSET_D.tga
+	map_Kd RB_Hardshell_Chest_TEXSET_D.tga
+
+newmtl Material__47
+	Ns 9.999999
+	Ni 1.500000
+	d 1.000000
+	Tr 0.000000
+	Tf 1.000000 1.000000 1.000000 
+	illum 2
+	Ka 0.588000 0.588000 0.588000
+	Kd 0.588000 0.588000 0.588000
+	Ks 0.000000 0.000000 0.000000
+	Ke 0.588000 0.588000 0.588000
+	map_Ka DecepticonLogo_alpha.tga
+	map_Kd DecepticonLogo_alpha.tga
+	map_d DecepticonLogo_alpha.tga
+
+newmtl Material__48
+	Ns 9.999999
+	Ni 1.500000
+	d 1.000000
+	Tr 0.000000
+	Tf 1.000000 1.000000 1.000000 
+	illum 2
+	Ka 0.588000 0.588000 0.588000
+	Kd 0.588000 0.588000 0.588000
+	Ks 0.000000 0.000000 0.000000
+	Ke 0.000000 0.000000 0.000000
+	map_Ka RB_Hardshell_Legs_TEXSET_D.tga
+	map_Kd RB_Hardshell_Legs_TEXSET_D.tga
+
+newmtl Material__49
+	Ns 9.999999
+	Ni 1.500000
+	d 1.000000
+	Tr 0.000000
+	Tf 1.000000 1.000000 1.000000 
+	illum 2
+	Ka 0.588000 0.588000 0.588000
+	Kd 0.588000 0.588000 0.588000
+	Ks 0.000000 0.000000 0.000000
+	Ke 0.000000 0.000000 0.000000
+	map_Ka WEP_ArmUp_TEXSET_Color_NormX.tga
+	map_Kd WEP_ArmUp_TEXSET_Color_NormX.tga
+	map_bump Normal_Bump_Normal_Bump.tga
+
+newmtl Material__50
+	Ns 9.999999
+	Ni 1.500000
+	d 1.000000
+	Tr 0.000000
+	Tf 1.000000 1.000000 1.000000 
+	illum 2
+	Ka 0.588000 0.588000 0.588000
+	Kd 0.588000 0.588000 0.588000
+	Ks 0.000000 0.000000 0.000000
+	Ke 0.000000 0.000000 0.000000
+	map_Ka RB_Hardshell_ArmLo_TEXSET_Color_NormX.tga
+	map_Kd RB_Hardshell_ArmLo_TEXSET_Color_NormX.tga
+
+newmtl Material__51
+	Ns 9.999999
+	Ni 1.500000
+	d 1.000000
+	Tr 0.000000
+	Tf 1.000000 1.000000 1.000000 
+	illum 2
+	Ka 0.588000 0.588000 0.588000
+	Kd 0.588000 0.588000 0.588000
+	Ks 0.000000 0.000000 0.000000
+	Ke 0.000000 0.000000 0.000000
+	map_Ka WEP_RocketLauncher_CLR.tga
+	map_Kd WEP_RocketLauncher_CLR.tga

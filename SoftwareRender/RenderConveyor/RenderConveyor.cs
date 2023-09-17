@@ -1,6 +1,7 @@
 ﻿using SoftwareRender.Rasterization;
 using System;
 using System.Numerics;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SoftwareRender.RenderConveyor
@@ -21,19 +22,23 @@ namespace SoftwareRender.RenderConveyor
         IndexBuffer indexBuffer;
         FloatBuffer zBuffer;
         FloatBuffer[] interpolationBuffers;
+        SpinLock[] spinlocks;
+        int procCount;
         public RenderConv(RenderCanvas canv) 
         {
             canvas = canv;
             viewportX = canvas.PixelWidth;
             viewportY = canvas.PixelHeight;
-            viewport = CreateViewport(0, 0, viewportX, viewportY, 0, 1);
-            indexBuffer = new IndexBuffer(canvas.PixelWidth, canvas.PixelHeight);
-            zBuffer = new FloatBuffer(canvas.PixelWidth, canvas.PixelHeight);
+            viewport = CreateViewport(0, 0, viewportX, viewportY, 1, 2);
+            indexBuffer = new IndexBuffer(viewportX, canvas.PixelHeight);
+            zBuffer = new FloatBuffer(viewportX, viewportY);
             interpolationBuffers = new FloatBuffer[3];
             for(int i = 0; i < 3; i++)
             {
-                interpolationBuffers[i] = new FloatBuffer(canvas.PixelWidth, canvas.PixelHeight);
+                interpolationBuffers[i] = new FloatBuffer(viewportX, viewportY);
             }
+            spinlocks = new SpinLock[viewportX * viewportY];
+            procCount = Environment.ProcessorCount;
         }
     
         public void SetShaderProgram(IShaderProgram shaderProgram)
@@ -117,7 +122,7 @@ namespace SoftwareRender.RenderConveyor
             float deltaY13 = uv1.Y - uv3.Y;
             float deltaX13 = uv1.X - uv3.X;
 
-            for (int y = Math.Max(midY, 0); y <= Math.Min(upY, indexBuffer.Height - 1); y++)
+            for (int y = midY; y <= upY; y++)
             {
                 float t1;
                 float t2;
@@ -133,25 +138,12 @@ namespace SoftwareRender.RenderConveyor
                     t2 = (deltaUp) / (midY - upY);
                 }
                 
-                int x0 = (int)MathF.Floor(up.X + (down.X - up.X) * t1);
-                int x1 = (int)MathF.Floor(up.X + (middle.X - up.X) * t2);
+                int x0 = (int)(up.X + (down.X - up.X) * t1);
+                int x1 = (int)(up.X + (middle.X - up.X) * t2);
 
+                int deltaX = x0 < x1 ? 1 : -1;
 
-                int startX;
-                int endX;
-
-                if (x0 > x1)
-                {
-                    startX = x1;
-                    endX = x0;
-                }
-                else
-                {
-                    startX = x0;
-                    endX = x1;
-                }
-
-                for (int x = Math.Max(startX, 0); x <= Math.Min(endX, indexBuffer.Width - 1); x++)
+                for (int x = x0; x != x1 + deltaX; x += deltaX)
                 {
                     float deltaXS1 = x - uv1.X;
                     float deltaYS1 = y - uv1.Y;
@@ -161,18 +153,30 @@ namespace SoftwareRender.RenderConveyor
                     float k1 = 1 - k2 - k3;
 
                     float z = 1 / (k1 / uv1.Z + k2 / uv2.Z + k3 / uv3.Z);
-                    if(zBuffer.GetValue(x, y) > z)
+                    //float z = (k1 * uv1.Z + k2 * uv2.Z + k3 * uv3.Z);
+                    
+                    bool isLocked = false;
+                    try
                     {
-                        indexBuffer.SetIndex(x, y, index);
-                        zBuffer.SetValue(x, y, z);
-                        interpolationBuffers[0].SetValue(x, y, k1);
-                        interpolationBuffers[1].SetValue(x, y, k2);
-                        interpolationBuffers[2].SetValue(x, y, k3);
+                        spinlocks[x + y * viewportY].Enter(ref isLocked);
+                        if (zBuffer.GetValue(x, y) > z)
+                        {
+                            indexBuffer.SetIndex(x, y, index);
+                            zBuffer.SetValue(x, y, z);
+                            interpolationBuffers[0].SetValue(x, y, k1);
+                            interpolationBuffers[1].SetValue(x, y, k2);
+                            interpolationBuffers[2].SetValue(x, y, k3);
+                        }
                     }
+                    finally
+                    {
+                        if(isLocked) spinlocks[x + y * viewportY].Exit();
+                    }
+                    
                 }
             }
 
-            for (int y = Math.Max(downY, 0); y < Math.Min(midY, indexBuffer.Height); y++)
+            for (int y = downY; y < midY; y++)
             {
                 float t1;
                 float t2;
@@ -188,24 +192,12 @@ namespace SoftwareRender.RenderConveyor
                     t2 = (deltaDown) / (midY - downY);
                 }
 
-                int x0 = (int)MathF.Floor(down.X + (up.X - down.X) * t1);
-                int x1 = (int)MathF.Floor(down.X + (middle.X - down.X) * t2);
+                int x0 = (int)(down.X + (up.X - down.X) * t1);
+                int x1 = (int)(down.X + (middle.X - down.X) * t2);
 
-                int startX;
-                int endX;
+                int deltaX = x0 < x1 ? 1 : -1;
 
-                if (x0 > x1)
-                {
-                    startX = x1;
-                    endX = x0;
-                }
-                else
-                {
-                    startX = x0;
-                    endX = x1;
-                }
-
-                for (int x = Math.Max(startX, 0); x <= Math.Min(endX, indexBuffer.Width - 1); x++)
+                for (int x = x0; x != x1 + deltaX; x += deltaX)
                 {
                     float deltaXS1 = x - uv1.X;
                     float deltaYS1 = y - uv1.Y;
@@ -215,13 +207,24 @@ namespace SoftwareRender.RenderConveyor
                     float k1 = 1 - k2 - k3;
 
                     float z = 1 / (k1 / uv1.Z + k2 / uv2.Z + k3 / uv3.Z);
-                    if (zBuffer.GetValue(x, y) > z)
+                    //float z = (k1 * uv1.Z + k2 * uv2.Z + k3 * uv3.Z);
+
+                    bool isLocked = false;
+                    try
                     {
-                        indexBuffer.SetIndex(x, y, index);
-                        zBuffer.SetValue(x, y, z);
-                        interpolationBuffers[0].SetValue(x, y, k1);
-                        interpolationBuffers[1].SetValue(x, y, k2);
-                        interpolationBuffers[2].SetValue(x, y, k3);
+                        spinlocks[x + y * viewportY].Enter(ref isLocked);
+                        if (zBuffer.GetValue(x, y) > z)
+                        {
+                            indexBuffer.SetIndex(x, y, index);
+                            zBuffer.SetValue(x, y, z);
+                            interpolationBuffers[0].SetValue(x, y, k1);
+                            interpolationBuffers[1].SetValue(x, y, k2);
+                            interpolationBuffers[2].SetValue(x, y, k3);
+                        }
+                    }
+                    finally
+                    {
+                        if (isLocked) spinlocks[x + y * viewportY].Exit();
                     }
                 }
             }
@@ -293,22 +296,19 @@ namespace SoftwareRender.RenderConveyor
         {
             if(program != null)
             {
-                int verticesCount = model.Vertices.Count;
-                int indexesCount = model.VerticesIndexes.Count;
-
                 // Vertices
-                int verticesCountPerThread = verticesCount / 4;
+                int verticesCount = model.Vertices.Count;
+                int verticesCountPerThread = verticesCount / procCount;
                 
-                Parallel.For(0, 4,
+                Parallel.For(0, procCount,
                     (int j) =>
                     {
                         int startI = verticesCountPerThread * j;
-                        int endI = j == 3 ? verticesCount : startI + verticesCountPerThread;
+                        int endI = j == procCount - 1 ? verticesCount : startI + verticesCountPerThread;
 
                         for (int i = startI; i < endI; i++)
                         {
                             model.OutVertices[i] = program.vertexToWorld(model.Vertices[i]);
-                            model.OutVertices[i] /= model.OutVertices[i].W;
 
                             model.OutNormalizedVertices[i] = program.vertexNormilized(model.OutVertices[i]);
                             model.OutNormalizedVertices[i] /= model.OutNormalizedVertices[i].W;
@@ -318,13 +318,13 @@ namespace SoftwareRender.RenderConveyor
 
                 // Normals
                 int normalsCount = model.Normals.Count;
-                int normalsCountPerThread =  normalsCount / 4;
+                int normalsCountPerThread =  normalsCount / procCount;
 
-                Parallel.For(0, 4,
+                Parallel.For(0, procCount,
                     (int j) =>
                     {
                         int startI = normalsCountPerThread * j;
-                        int endI = j == 3 ? normalsCount : startI + normalsCountPerThread;
+                        int endI = j == procCount - 1 ? normalsCount : startI + normalsCountPerThread;
 
                         for (int i = startI; i < endI; i++)
                         {
@@ -334,76 +334,129 @@ namespace SoftwareRender.RenderConveyor
                 );
 
                 indexBuffer.ClearBuffer();
-                zBuffer.ClearBuffer(1);
+                zBuffer.ClearBuffer(2);
 
-                int triangleCountPerThread = (indexesCount / 3) / 4;
-                Parallel.For(0, 4,
+                // Triangle indexes
+                int triangleCount = model.Triangles.Count;
+                int triangleCountPerThread = triangleCount / procCount;
+                
+                Parallel.For(0, procCount,
                     (int j) =>
                     {
                         int startI = triangleCountPerThread * j;
-                        int endI = j == 3 ? indexesCount / 3 : startI + triangleCountPerThread;
+                        int endI = j == procCount - 1 ? triangleCount : startI + triangleCountPerThread;
 
                         for (int i = startI; i < endI; i++)
                         {
-                            Vector4 v1 = model.OutNormalizedVertices[model.VerticesIndexes[i*3+0]-1];
-                            Vector4 v2 = model.OutNormalizedVertices[model.VerticesIndexes[i*3+1]-1];
-                            Vector4 v3 = model.OutNormalizedVertices[model.VerticesIndexes[i*3+2]-1];
+                            Triangle tr = model.Triangles[i];
+
+                            Vector4 vw1 = model.OutVertices[tr.vertexIndexes[0].v_i - 1];
+                            Vector4 vw2 = model.OutVertices[tr.vertexIndexes[1].v_i - 1];
+                            Vector4 vw3 = model.OutVertices[tr.vertexIndexes[2].v_i - 1];
+
+                            Vector4 v1 = model.OutNormalizedVertices[tr.vertexIndexes[0].v_i-1];
+                            Vector4 v2 = model.OutNormalizedVertices[tr.vertexIndexes[1].v_i-1];
+                            Vector4 v3 = model.OutNormalizedVertices[tr.vertexIndexes[2].v_i-1];
 
                             //if (triangleInOfCulling(v1, v2, v3) && Cross((v2 - v1), (v2 - v3)).Z <= 0)
-                            if (!(vertexOutOfCulling(v1) || vertexOutOfCulling(v2) || vertexOutOfCulling(v3)) && Cross((v2 - v1), (v2 - v3)).Z <= 0)
+                            if (!(vertexOutOfCulling(v1) || vertexOutOfCulling(v2) || vertexOutOfCulling(v3)))
                             {
-                                Vector4 uv1 = Vector4.Transform(v1, viewport);
-                                Vector4 uv2 = Vector4.Transform(v2, viewport);
-                                Vector4 uv3 = Vector4.Transform(v3, viewport);
+                                Vector3 normal = Cross((v2 - v1), (v2 - v3));
+                                if(normal.Z < 0)
+                                {
+                                    model.Triangles[i].primitiveMaterial.Normal.setValue(Cross(vw2 - vw1, vw2 - vw3));
 
-                                /*
-                                canvas.DrawLineBresenhem((int)uv1.X, (int)uv1.Y, (int)uv2.X, (int)uv2.Y, new Vector3(0, 0, 0));
-                                canvas.DrawLineBresenhem((int)uv2.X, (int)uv2.Y, (int)uv3.X, (int)uv3.Y, new Vector3(0, 0, 0));
-                                canvas.DrawLineBresenhem((int)uv1.X, (int)uv1.Y, (int)uv3.X, (int)uv3.Y, new Vector3(0, 0, 0));
-                                */
+                                    Vector4 uv1 = Vector4.Transform(v1, viewport);
+                                    Vector4 uv2 = Vector4.Transform(v2, viewport);
+                                    Vector4 uv3 = Vector4.Transform(v3, viewport);
 
-                                //DrawDDALine(uv1.X, uv1.Y, uv2.X, uv2.Y, new Vector3(0, 0, 0));
-                                //DrawDDALine(uv3.X, uv3.Y, uv2.X, uv2.Y, new Vector3(0, 0, 0));
-                                //DrawDDALine(uv1.X, uv1.Y, uv3.X, uv3.Y, new Vector3(0, 0, 0));
-                                
-                                DrawTriangleIndex(uv1, uv2, uv3, i + 1);
-                                // TODO: Fragment process
+                                    /*
+                                    canvas.DrawLineBresenhem((int)uv1.X, (int)uv1.Y, (int)uv2.X, (int)uv2.Y, new Vector3(0, 0, 0));
+                                    canvas.DrawLineBresenhem((int)uv2.X, (int)uv2.Y, (int)uv3.X, (int)uv3.Y, new Vector3(0, 0, 0));
+                                    canvas.DrawLineBresenhem((int)uv1.X, (int)uv1.Y, (int)uv3.X, (int)uv3.Y, new Vector3(0, 0, 0));
+                                    */
+
+                                    //DrawDDALine(uv1.X, uv1.Y, uv2.X, uv2.Y, new Vector3(0, 0, 0));
+                                    //DrawDDALine(uv3.X, uv3.Y, uv2.X, uv2.Y, new Vector3(0, 0, 0));
+                                    //DrawDDALine(uv1.X, uv1.Y, uv3.X, uv3.Y, new Vector3(0, 0, 0));
+
+                                    DrawTriangleIndex(uv1, uv2, uv3, i + 1);
+                                }
                             }
                         }
                     }
                 );
 
-                int pixelsPerThread = viewportX * viewportY / 4;
-                Parallel.For(0, 4,
+                // Pixels
+                int pixelsPerThread = viewportX * viewportY / procCount;
+                
+                Parallel.For(0, procCount,
                     (int j) =>
                     {
                         int startI = pixelsPerThread * j;
-                        int endI = j == 3 ? viewportX * viewportY : startI + pixelsPerThread;
+                        int endI = j == procCount - 1 ? viewportX * viewportY : startI + pixelsPerThread;
 
                         for (int i = startI; i < endI; i++)
                         {
                             int triangleIndex = indexBuffer.GetIndex(i);
                             if(triangleIndex != 0)
                             {
-                                int index = (triangleIndex-1) * 3;
+                                Triangle tr = model.Triangles[triangleIndex - 1];
 
                                 float k1 = interpolationBuffers[0].GetValue(i);
                                 float k2 = interpolationBuffers[1].GetValue(i);
                                 float k3 = interpolationBuffers[2].GetValue(i);
 
-                                Vector4 v1 = model.OutVertices[model.VerticesIndexes[index + 0] - 1];
-                                Vector4 v2 = model.OutVertices[model.VerticesIndexes[index + 1] - 1];
-                                Vector4 v3 = model.OutVertices[model.VerticesIndexes[index + 2] - 1];
+                                Vector4 v1 = model.OutVertices[tr.vertexIndexes[0].v_i - 1];
+                                Vector4 v2 = model.OutVertices[tr.vertexIndexes[1].v_i - 1];
+                                Vector4 v3 = model.OutVertices[tr.vertexIndexes[2].v_i - 1];
 
                                 Vector4 v = v1 * k1 + v2 * k2 + v3 * k3;
 
-                                Vector3 n1 = model.OutNormals[model.NormalIndexes[index + 0] - 1];
-                                Vector3 n2 = model.OutNormals[model.NormalIndexes[index + 1] - 1];
-                                Vector3 n3 = model.OutNormals[model.NormalIndexes[index + 2] - 1];
+                                Vector4 vn1 = model.OutNormalizedVertices[tr.vertexIndexes[0].v_i - 1];
+                                Vector4 vn2 = model.OutNormalizedVertices[tr.vertexIndexes[1].v_i - 1];
+                                Vector4 vn3 = model.OutNormalizedVertices[tr.vertexIndexes[2].v_i - 1];
 
-                                Vector3 n = n1 * k1 + n2 * k2 + n3 * k3;
+                                Vector3 color;
 
-                                Vector3 color = program.fragment(v, n);
+                                if (tr.vertexIndexes[0].t_i != 0 && tr.vertexIndexes[0].n_i != 0)
+                                {
+                                    Vector3 t1 = model.TextureUVs[tr.vertexIndexes[0].t_i - 1];
+                                    Vector3 t2 = model.TextureUVs[tr.vertexIndexes[1].t_i - 1];
+                                    Vector3 t3 = model.TextureUVs[tr.vertexIndexes[2].t_i - 1];
+
+                                    Vector3 t = t1 * k1 + t2 * k2 + t3 * k3;
+
+                                    Vector3 n1 = model.OutNormals[tr.vertexIndexes[0].n_i - 1];
+                                    Vector3 n2 = model.OutNormals[tr.vertexIndexes[1].n_i - 1];
+                                    Vector3 n3 = model.OutNormals[tr.vertexIndexes[2].n_i - 1];
+
+                                    Vector3 n = n1 * k1 + n2 * k2 + n3 * k3;
+                                    color = program.fragmentPTN(tr.primitiveMaterial, v, t, n);
+                                }
+                                else if(tr.vertexIndexes[0].t_i != 0)
+                                {
+                                    Vector3 t1 = model.TextureUVs[tr.vertexIndexes[0].t_i - 1];
+                                    Vector3 t2 = model.TextureUVs[tr.vertexIndexes[1].t_i - 1];
+                                    Vector3 t3 = model.TextureUVs[tr.vertexIndexes[2].t_i - 1];
+
+                                    Vector3 t = t1 * k1 + t2 * k2 + t3 * k3;
+
+                                    color = program.fragmentPT(tr.primitiveMaterial, v, t);
+                                }
+                                else if (tr.vertexIndexes[0].n_i != 0)
+                                {
+                                    Vector3 n1 = model.OutNormals[tr.vertexIndexes[0].n_i - 1];
+                                    Vector3 n2 = model.OutNormals[tr.vertexIndexes[1].n_i - 1];
+                                    Vector3 n3 = model.OutNormals[tr.vertexIndexes[2].n_i - 1];
+
+                                    Vector3 n = n1 * k1 + n2 * k2 + n3 * k3;
+                                    color = program.fragmentPN(tr.primitiveMaterial, v, n);
+                                }
+                                else
+                                {
+                                    color = program.fragmentP(tr.primitiveMaterial, v);
+                                }
 
                                 canvas.SetPixel(i, color);
                             }
@@ -412,14 +465,5 @@ namespace SoftwareRender.RenderConveyor
                 );
             }
         }
-
-        /*
-        public void SetViewport(int w, int h)
-        {
-            viewport = CreateViewport(0, 0, w, h, 0, 1);
-            viewportX = w;
-            viewportY = h;
-        }
-        */
     }
 }

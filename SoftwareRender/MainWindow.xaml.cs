@@ -2,6 +2,7 @@
 using SoftwareRender.Render;
 using SoftwareRender.RenderConveyor;
 using System;
+using System.Numerics;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -14,6 +15,7 @@ namespace SoftwareRender
     public partial class MainWindow : Window
     {
         private Model marioModel;
+        private Model botModel;
         private ModelShader shader;
 
         private RenderCanvas rCanvas = new RenderCanvas(1366, 780);
@@ -24,11 +26,12 @@ namespace SoftwareRender
         {
             rCanvas.ClearColor(new(0.5f, 0.5f, 0.5f));
 
+            shader.model = botModel.modelMatrix;
             shader.view = camera.view;
             shader.proj = camera.proj;
             shader.eyePos = camera.eye;
 
-            conveyor.DrawData(marioModel);
+            conveyor.DrawData(botModel);
 
             rCanvas.SwapBuffers();
         }
@@ -37,12 +40,14 @@ namespace SoftwareRender
         {
             InitializeComponent();
             marioModel = ObjParser.parse("../../../mario-obj/source/Mario.obj");
+            botModel = ObjParser.parse("../../../HardshellTransformer/Hardshell.obj");
+            botModel.modelMatrix = Matrix4x4.CreateScale(1/100f);
             conveyor = new RenderConv(rCanvas);
             shader = new();
             conveyor.SetShaderProgram(shader);
 
             displayImg.Source = rCanvas.Source;
-            shader.lightPos = new(0, 8, 10);
+            shader.lightPos = new(0, 8, -10);
 
             CompositionTarget.Rendering += RenderLoop;
         }
@@ -71,7 +76,7 @@ namespace SoftwareRender
             Point currMousePos = e.GetPosition(this);
             if (isMouseDown)
             {
-                Vector delta = currMousePos - mousePos;
+                System.Windows.Vector delta = currMousePos - mousePos;
                 camera.RotateRoundTarget((float)delta.X / 100f, (float)delta.Y / 100f);
             }
             mousePos = currMousePos;

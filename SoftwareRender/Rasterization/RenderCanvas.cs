@@ -4,12 +4,17 @@ using System.Linq;
 using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows;
 
 namespace SoftwareRender.Rasterization
 {
     public class RenderCanvas : Pbgra32Bitmap
     {
-        public RenderCanvas(int pixelWidth, int pixelHeight) : base(pixelWidth, pixelHeight){ }
+        private Int32Rect drawArea;
+        public RenderCanvas(int pixelWidth, int pixelHeight) : base(pixelWidth, pixelHeight)
+        {
+            drawArea = new(0, 0, PixelWidth, PixelHeight);
+        }
 
         public void DrawLineBresenhem(int x0, int y0, int x1, int y1, Vector3 color)
         {
@@ -37,13 +42,13 @@ namespace SoftwareRender.Rasterization
                 x += dX;
             }
         }
-
+        
         public void SwapBuffers()
         {
             try
             {
                 Source.Lock();
-                Source.AddDirtyRect(new(0, 0, PixelWidth, PixelHeight));
+                Source.AddDirtyRect(drawArea);
             }
             finally
             {

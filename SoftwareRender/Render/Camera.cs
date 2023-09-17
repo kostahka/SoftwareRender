@@ -15,7 +15,7 @@ namespace SoftwareRender.Render
 
         float FOV = (float)Math.PI / 4;
         float aspect = 1366/768f;
-        float zFar = 20.0f;
+        float zFar = 200.0f;
         float zNear = 0.5f;
 
         float distanceToTarget = 8;
