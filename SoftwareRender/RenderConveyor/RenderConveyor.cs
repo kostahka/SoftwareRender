@@ -175,6 +175,18 @@ namespace SoftwareRender.RenderConveyor
                 y += deltaY;
             }
         }
+        public void BeginDraw()
+        {
+            Parallel.ForEach(Partitioner.Create(0, viewportX * viewportY),
+                    range =>
+                    {
+                        for (int i = range.Item1; i < range.Item2; i++)
+                        {
+                            zBuffer[i] = maxDepth;
+                        }
+                    }
+                );
+        }
         public void DrawData(Model model)
         {
             if(program != null)
@@ -216,7 +228,6 @@ namespace SoftwareRender.RenderConveyor
                         for (int i = range.Item1; i < range.Item2; i++)
                         {
                             indexBuffer[i] = 0;
-                            zBuffer[i] = maxDepth;
                         }
                     }
                 );

@@ -19,23 +19,34 @@ namespace SoftwareRender
         private Model botModel;
         private ModelShader shader;
 
-        private RenderCanvas rCanvas = new RenderCanvas(1366, 780);
+        private RenderCanvas rCanvas = new RenderCanvas(1920, 1080);
         private Camera camera = new Camera();
         private RenderConv conveyor;
+
+        private DotLight light;
 
         private void Render()
         {
             try
             {
                 rCanvas.Source.Lock();
+
+                conveyor.BeginDraw();
+
                 rCanvas.ClearColor(new(0.5f, 0.5f, 0.5f));
 
                 shader.model = botModel.modelMatrix;
                 shader.view = camera.view;
                 shader.proj = camera.proj;
                 shader.eyePos = camera.eye;
+                shader.lightPos = light.Pos;
+                shader.lightIntensity = light.Intensity;
 
                 conveyor.DrawData(botModel);
+
+                shader.model = light.Model.modelMatrix;
+
+                conveyor.DrawData(light.Model);
 
                 rCanvas.SwapBuffers();
             }
@@ -60,9 +71,11 @@ namespace SoftwareRender
             shader = new();
             conveyor.SetShaderProgram(shader);
 
+            light = new(100f);
+
             displayImg.Source = rCanvas.Source;
-            shader.lightPos = new(7, 7, 7);
-            shader.lightIntensity = 100f;
+            shader.lightPos = light.Pos;
+            shader.lightIntensity = light.Intensity;
 
             Render();
             //CompositionTarget.Rendering += RenderLoop;
@@ -74,12 +87,26 @@ namespace SoftwareRender
         {
             if(e.Key == Key.Up)
             {
-                camera.ChangeFOV(MathF.PI / 180);
+                if (Keyboard.Modifiers == ModifierKeys.Control)
+                {
+                    light.ChangeIntensity(5f);
+                }
+                else
+                {
+                    camera.ChangeFOV(MathF.PI / 180);
+                }
                 Render();
             }
             if (e.Key == Key.Down)
             {
-                camera.ChangeFOV(-MathF.PI / 180);
+                if (Keyboard.Modifiers == ModifierKeys.Control)
+                {
+                    light.ChangeIntensity(-5f);
+                }
+                else
+                {
+                    camera.ChangeFOV(-MathF.PI / 180);
+                }
                 Render();
             }
         }
@@ -95,7 +122,14 @@ namespace SoftwareRender
             if (isMouseDown)
             {
                 System.Windows.Vector delta = currMousePos - mousePos;
-                camera.RotateRoundTarget((float)delta.X / 100f, (float)delta.Y / 100f);
+                if(Keyboard.Modifiers == ModifierKeys.Control)
+                {
+                    light.RotateRoundTarget((float)delta.X / 100f, (float)delta.Y / 100f);
+                }
+                else
+                {
+                    camera.RotateRoundTarget((float)delta.X / 100f, (float)delta.Y / 100f);
+                }
                 Render();
             }
             mousePos = currMousePos;
@@ -108,7 +142,14 @@ namespace SoftwareRender
 
         private void Window_MouseWheel(object sender, MouseWheelEventArgs e)
         {
-            camera.MoveToTarget(-e.Delta / 100f);
+            if (Keyboard.Modifiers == ModifierKeys.Control)
+            {
+                light.MoveToTarget(-e.Delta / 100f);
+            }
+            else
+            {
+                camera.MoveToTarget(-e.Delta / 100f);
+            }
             Render();
         }
     }

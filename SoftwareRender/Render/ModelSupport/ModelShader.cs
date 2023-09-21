@@ -14,8 +14,11 @@ namespace SoftwareRender.Render.ModelSupport
         public float lightIntensity { get; set; } = 26f;
         public Vector3 eyePos { get; set; } = new();
         float ambient = 0.1f;
-        float diffuse = 0.5f;
+        float diffuse = 0.7f;
         float specullar = 0.3f;
+
+        Vector3 colorMin = new(0);
+        Vector3 colorMax = new(1);
 
         public Vector3 fragment(Vector3 pos, Vector3 normal, Vector3 ambientColor, Vector3 diffuseColor, Vector3 specullarColor, float specNs)
         {
@@ -39,7 +42,7 @@ namespace SoftwareRender.Render.ModelSupport
                 + dif * diffuse * diffuseColor
                 + spec * specullar * specullarColor;
 
-            return resColor;
+            return Vector3.Clamp(resColor, colorMin, colorMax);
         }
 
         public Vector3 fragmentP(Material material, Vector4 pos)
