@@ -1,32 +1,9 @@
-﻿using SoftwareRender.Render;
-using SoftwareRender.RenderConveyor;
+﻿using SoftwareRender.Render.MaterialSupport;
 using System.Collections.Generic;
 using System.Numerics;
 
-namespace SoftwareRender
+namespace SoftwareRender.Render.ModelSupport
 {
-    internal struct VertexIndexes
-    {
-        public VertexIndexes(int v_i, int t_i = 0, int n_i = 0)
-        {
-            this.v_i = v_i;
-            this.t_i = t_i;
-            this.n_i = n_i;
-        }
-        public int v_i;
-        public int t_i;
-        public int n_i;
-    }
-    internal struct Triangle
-    {
-        public VertexIndexes[] vertexIndexes;
-        public Material primitiveMaterial;
-        public Triangle(Material material, VertexIndexes[] vertexIndexes) 
-        {
-            primitiveMaterial = material;
-            this.vertexIndexes = vertexIndexes;
-        }
-    }
     internal class Model
     {
         public Model(List<Vector4> vertices,
@@ -39,12 +16,12 @@ namespace SoftwareRender
             Normals = normals;
             Triangles = triangles;
             OutVertices = new Vector4[vertices.Count];
-            OutNormalizedVertices = new Vector4[vertices.Count];
+            OutUVVertices = new Vector4[vertices.Count];
             OutNormals = new Vector3[normals.Count];
         }
 
         public Vector4[] OutVertices { get; private set; }
-        public Vector4[] OutNormalizedVertices { get; private set; }
+        public Vector4[] OutUVVertices { get; private set; }
         public Vector3[] OutNormals { get; private set; }
         public List<Vector4> Vertices { get; private set; }
         public List<Vector3> TextureUVs { get; private set; }

@@ -1,9 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Numerics;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 
 namespace SoftwareRender.Rasterization
@@ -45,15 +41,7 @@ namespace SoftwareRender.Rasterization
         
         public void SwapBuffers()
         {
-            try
-            {
-                Source.Lock();
-                Source.AddDirtyRect(drawArea);
-            }
-            finally
-            {
-                Source.Unlock();
-            }
+            Source.AddDirtyRect(drawArea);
         }
     }
 }

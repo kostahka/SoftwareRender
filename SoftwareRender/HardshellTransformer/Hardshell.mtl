@@ -24,10 +24,11 @@ newmtl Material__46
 	illum 2
 	Ka 0.588000 0.588000 0.588000
 	Kd 0.588000 0.588000 0.588000
-	Ks 0.000000 0.000000 0.000000
+	Ks 0.100000 0.100000 0.100000
 	Ke 0.000000 0.000000 0.000000
 	map_Ka RB_Hardshell_Chest_TEXSET_D.tga
 	map_Kd RB_Hardshell_Chest_TEXSET_D.tga
+	map_Ks RB_Hardshell_Chest_TEXSET_S.tga
 
 newmtl Material__47
 	Ns 9.999999
@@ -67,7 +68,7 @@ newmtl Material__49
 	illum 2
 	Ka 0.588000 0.588000 0.588000
 	Kd 0.588000 0.588000 0.588000
-	Ks 0.000000 0.000000 0.000000
+	Ks 0.200000 0.200000 0.200000
 	Ke 0.000000 0.000000 0.000000
 	map_Ka WEP_ArmUp_TEXSET_Color_NormX.tga
 	map_Kd WEP_ArmUp_TEXSET_Color_NormX.tga

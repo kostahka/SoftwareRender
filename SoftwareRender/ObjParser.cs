@@ -1,12 +1,12 @@
 ﻿using SoftwareRender.Render;
+using SoftwareRender.Render.MaterialSupport;
+using SoftwareRender.Render.ModelSupport;
 using SoftwareRender.RenderConveyor;
-using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Numerics;
-using static SoftwareRender.Model;
 
 namespace SoftwareRender
 {
@@ -14,7 +14,7 @@ namespace SoftwareRender
     {
         static Texture? ParseTextureLine(string line, string mat_path)
         {
-            string[] tokens = line.Split().Where(s => s != "").ToArray();
+            string[] tokens = line.Split(" ", System.StringSplitOptions.RemoveEmptyEntries);
 
             string? path = System.IO.Path.GetDirectoryName(mat_path);
             if (path == null)
@@ -26,7 +26,7 @@ namespace SoftwareRender
         }
         static Vector3 ParseVectorLine(string line)
         {
-            string[] tokens = line.Split().Where(s => s != "").ToArray();
+            string[] tokens = line.Split(" ", System.StringSplitOptions.RemoveEmptyEntries);
 
             float x = ParseFloat(tokens[1]);
             float y = ParseFloat(tokens[2]);
@@ -34,25 +34,24 @@ namespace SoftwareRender
             Vector3 res = new Vector3(x, y, z);
             return res;
         }
+
         static Dictionary<string, Material> ParseMaterials(string file_path)
         {
             Dictionary<string, Material> materials = new Dictionary<string, Material>();
-
             if (!System.IO.File.Exists(file_path))
                 return materials;
 
             using (var reader = new StreamReader(stream: new FileStream(file_path, FileMode.Open)))
             {
                 string? materialName = null;
-                Vector3 valAmbient = new(0);
-                Vector3 valDiffuse = new(0);
-                Vector3 valSpecullar = new(0);
-                Vector3 valNormal = new(1);
+                Vector3 valAmbient = new(0.2f);
+                Vector3 valDiffuse = new(0.5f);
+                Vector3 valSpecullar = new(0.8f);
                 Texture? texAmbient = null;
                 Texture? texDiffuse = null;
                 Texture? texSpecullar = null;
                 Texture? texNormal = null;
-                float SpecNs = 0.0f;
+                float SpecNs = 5;
 
                 while (!reader.EndOfStream)
                 {
@@ -75,23 +74,18 @@ namespace SoftwareRender
                             MaterialProperty Specullar = texSpecullar == null ?
                                 new ConstMaterialProperty(valSpecullar) : new TexturedMaterialProperty(texSpecullar, valSpecullar);
 
-                            MaterialProperty Normal = texNormal == null ?
-                                new ConstMaterialProperty(valNormal) : new TexturedMaterialProperty(texNormal, valNormal);
+                            NormalMap? normalMap = texNormal == null ? null : new(texNormal);
 
-                            materials[materialName] = new Material(Ambient, Diffuse, Specullar, Normal, SpecNs);
-                            valNormal = new(0);
-                            valNormal = new(0);
-                            valSpecullar = new(0);
-                            valNormal = new(1);
+                            materials[materialName] = new Material(Ambient, Diffuse, Specullar, normalMap, SpecNs);
                             texAmbient = null;
                             texDiffuse = null;
                             texSpecullar = null;
                             texNormal = null;
-                            SpecNs = 0.0f;
+                            SpecNs = 5f;
                             materialName = null;
                         }
 
-                        string[] tokens = line.Split().Where(s => s != "").ToArray();
+                        string[] tokens = line.Split(" ", System.StringSplitOptions.RemoveEmptyEntries);
                         materialName = tokens[1];
                     }
                     else if (line.StartsWith("Ka "))
@@ -105,6 +99,12 @@ namespace SoftwareRender
                     else if (line.StartsWith("Ks "))
                     {
                         valSpecullar = ParseVectorLine(line);
+                    }
+                    else if (line.StartsWith("Ns "))
+                    {
+                        string[] tokens = line.Split(" ", System.StringSplitOptions.RemoveEmptyEntries);
+
+                        SpecNs = ParseFloat(tokens[1]);
                     }
                     else if (line.StartsWith("map_Ka "))
                     {
@@ -135,10 +135,9 @@ namespace SoftwareRender
                     MaterialProperty Specullar = texSpecullar == null ?
                         new ConstMaterialProperty(valSpecullar) : new TexturedMaterialProperty(texSpecullar, valSpecullar);
 
-                    MaterialProperty Normal = texNormal == null ?
-                        new ConstMaterialProperty(valNormal) : new TexturedMaterialProperty(texNormal, valNormal);
+                    NormalMap? normalMap = texNormal == null ? null : new(texNormal);
 
-                    materials[materialName] = new Material(Ambient, Diffuse, Specullar, Normal, SpecNs);
+                    materials[materialName] = new Material(Ambient, Diffuse, Specullar, normalMap, SpecNs);
                 }
             }
             return materials;
@@ -180,7 +179,7 @@ namespace SoftwareRender
 
                     if (line.StartsWith("mtllib "))
                     {
-                        string[] tokens = line.Split().Where(s => s != "").ToArray();
+                        string[] tokens = line.Split(" ", System.StringSplitOptions.RemoveEmptyEntries);
 
                         string? path = System.IO.Path.GetDirectoryName(file_path);
                         if(path != null)
@@ -195,7 +194,7 @@ namespace SoftwareRender
                     }
                     else if (line.StartsWith("v "))
                     {
-                        string[] tokens = line.Split().Where(s => s != "").ToArray();
+                        string[] tokens = line.Split(" ", System.StringSplitOptions.RemoveEmptyEntries);
                         float x = ParseFloat(tokens[1]);
                         float y = ParseFloat(tokens[2]);
                         float z = ParseFloat(tokens[3]);
@@ -211,7 +210,7 @@ namespace SoftwareRender
                     }
                     else if(line.StartsWith("vt "))
                     {
-                        string[] tokens = line.Split().Where(s => s != "").ToArray();
+                        string[] tokens = line.Split(" ", System.StringSplitOptions.RemoveEmptyEntries);
                         Vector3 tex_uv = new Vector3(0);
                         tex_uv.X = ParseFloat(tokens[1]);
                         if(tokens.Length > 2)
@@ -226,11 +225,11 @@ namespace SoftwareRender
                     }
                     else if (line.StartsWith("vn "))
                     {
-                        normals.Add(ParseVectorLine(line));
+                        normals.Add(Vector3.Normalize(ParseVectorLine(line)));
                     }
                     else if (line.StartsWith("usemtl "))
                     {
-                        string[] tokens = line.Split().Where(s => s != "").ToArray();
+                        string[] tokens = line.Split(" ", System.StringSplitOptions.RemoveEmptyEntries);
 
                         string materialName = tokens[1];
                         if(materials.ContainsKey(materialName))
@@ -238,7 +237,7 @@ namespace SoftwareRender
                     }
                     else if (line.StartsWith("f "))
                     {
-                        string[] tokens = line.Split().Where(s => s != "").ToArray();
+                        string[] tokens = line.Split(" ", System.StringSplitOptions.RemoveEmptyEntries);
 
                         PrimitiveType type = tokens.Length == 4 ? PrimitiveType.triangles : PrimitiveType.quads;
 
@@ -260,7 +259,7 @@ namespace SoftwareRender
 
                         if (type == PrimitiveType.triangles)
                         {
-                            triangles.Add(new(currentMaterial.Clone(), vertexIndexes));
+                            triangles.Add(new(currentMaterial, vertexIndexes));
                         }
                         else if (type == PrimitiveType.quads)
                         {
@@ -272,8 +271,8 @@ namespace SoftwareRender
                             {
                                 vertexIndexes[2], vertexIndexes[3], vertexIndexes[0]
                             };
-                            triangles.Add(new(currentMaterial.Clone(), firstTriangle));
-                            triangles.Add(new(currentMaterial.Clone(), secondTriangle));
+                            triangles.Add(new(currentMaterial, firstTriangle));
+                            triangles.Add(new(currentMaterial, secondTriangle));
                         }
                     }
                 }

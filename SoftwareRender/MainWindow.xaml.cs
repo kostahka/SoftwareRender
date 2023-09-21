@@ -1,5 +1,6 @@
 ﻿using SoftwareRender.Rasterization;
 using SoftwareRender.Render;
+using SoftwareRender.Render.ModelSupport;
 using SoftwareRender.RenderConveyor;
 using System;
 using System.Numerics;
@@ -22,18 +23,31 @@ namespace SoftwareRender
         private Camera camera = new Camera();
         private RenderConv conveyor;
 
+        private void Render()
+        {
+            try
+            {
+                rCanvas.Source.Lock();
+                rCanvas.ClearColor(new(0.5f, 0.5f, 0.5f));
+
+                shader.model = botModel.modelMatrix;
+                shader.view = camera.view;
+                shader.proj = camera.proj;
+                shader.eyePos = camera.eye;
+
+                conveyor.DrawData(botModel);
+
+                rCanvas.SwapBuffers();
+            }
+            finally
+            {
+                rCanvas.Source.Unlock();
+            }
+        }
+
         private void RenderLoop(object? sender, EventArgs e)
         {
-            rCanvas.ClearColor(new(0.5f, 0.5f, 0.5f));
-
-            shader.model = botModel.modelMatrix;
-            shader.view = camera.view;
-            shader.proj = camera.proj;
-            shader.eyePos = camera.eye;
-
-            conveyor.DrawData(botModel);
-
-            rCanvas.SwapBuffers();
+            Render();
         }
 
         public MainWindow()
@@ -47,9 +61,11 @@ namespace SoftwareRender
             conveyor.SetShaderProgram(shader);
 
             displayImg.Source = rCanvas.Source;
-            shader.lightPos = new(0, 8, -10);
+            shader.lightPos = new(7, 7, 7);
+            shader.lightIntensity = 100f;
 
-            CompositionTarget.Rendering += RenderLoop;
+            Render();
+            //CompositionTarget.Rendering += RenderLoop;
         }
 
         private bool isMouseDown = false;
@@ -59,10 +75,12 @@ namespace SoftwareRender
             if(e.Key == Key.Up)
             {
                 camera.ChangeFOV(MathF.PI / 180);
+                Render();
             }
             if (e.Key == Key.Down)
             {
                 camera.ChangeFOV(-MathF.PI / 180);
+                Render();
             }
         }
 
@@ -78,6 +96,7 @@ namespace SoftwareRender
             {
                 System.Windows.Vector delta = currMousePos - mousePos;
                 camera.RotateRoundTarget((float)delta.X / 100f, (float)delta.Y / 100f);
+                Render();
             }
             mousePos = currMousePos;
         }
@@ -90,6 +109,7 @@ namespace SoftwareRender
         private void Window_MouseWheel(object sender, MouseWheelEventArgs e)
         {
             camera.MoveToTarget(-e.Delta / 100f);
+            Render();
         }
     }
 }

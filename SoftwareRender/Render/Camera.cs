@@ -1,9 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Numerics;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace SoftwareRender.Render
 {
@@ -32,6 +28,8 @@ namespace SoftwareRender.Render
         public void ChangeFOV(float dFOV)
         {
             FOV += dFOV;
+            if (FOV <= 0)
+                FOV = MathF.PI / 180;
             UpdateProj();
         }
         public void MoveToTarget(float d)

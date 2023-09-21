@@ -1,9 +1,5 @@
-﻿using SoftwareRender.Render;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using SoftwareRender.Render.MaterialSupport;
 using System.Numerics;
-using System.Runtime.InteropServices;
 
 namespace SoftwareRender.RenderConveyor
 {
