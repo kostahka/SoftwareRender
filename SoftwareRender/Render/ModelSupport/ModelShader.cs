@@ -13,9 +13,9 @@ namespace SoftwareRender.Render.ModelSupport
         public Vector3 lightPos { get; set; } = new();
         public float lightIntensity { get; set; } = 26f;
         public Vector3 eyePos { get; set; } = new();
-        float ambient = 0.1f;
-        float diffuse = 0.7f;
-        float specullar = 0.3f;
+        float ambient = 0.5f;
+        float diffuse = 1.0f;
+        float specullar = 1.0f;
 
         Vector3 colorMin = new(0);
         Vector3 colorMax = new(1);

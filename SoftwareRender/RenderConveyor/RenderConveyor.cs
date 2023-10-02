@@ -201,9 +201,11 @@ namespace SoftwareRender.RenderConveyor
                             model.OutVertices[i] = program.vertexToWorld(model.Vertices[i]);
 
                             Vector4 normalizedV = program.vertexNormilized(model.OutVertices[i]);
+                            float normalizedW = normalizedV.W;
                             normalizedV /= normalizedV.W;
 
                             model.OutUVVertices[i] = Vector4.Transform(normalizedV, viewport);
+                            model.OutUVVertices[i].W = normalizedW;
                         }
                     });
 
@@ -303,13 +305,15 @@ namespace SoftwareRender.RenderConveyor
                                 fVX.Z = uv1.X - x;
 
                                 Vector3 k = Vector3.Cross(fVX, fVY);
-                                float k1 = 1 - (k.X + k.Y) / k.Z;
-                                float k2 = k.Y / k.Z;
-                                float k3 = k.X / k.Z;
+                                float k1 = (1 - (k.X + k.Y) / k.Z) / uv1.W;
+                                float k2 = k.Y / k.Z / uv2.W;
+                                float k3 = k.X / k.Z / uv3.W;
 
-                                float kp1 = k1 / uv1.Z * zBuffer[i];
-                                float kp2 = k2 / uv2.Z * zBuffer[i];
-                                float kp3 = k3 / uv3.Z * zBuffer[i];
+                                float z0 = 1 / (k1 + k2 + k3);
+
+                                float kp1 = k1 * z0;
+                                float kp2 = k2 * z0;
+                                float kp3 = k3 * z0;
 
                                 Vector4 v1 = model.OutVertices[tr.vertexIndexes[0].v_i - 1];
                                 Vector4 v2 = model.OutVertices[tr.vertexIndexes[1].v_i - 1];

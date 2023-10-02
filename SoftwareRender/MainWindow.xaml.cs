@@ -17,9 +17,10 @@ namespace SoftwareRender
     {
         private Model marioModel;
         private Model botModel;
+        private Model chessModel;
         private ModelShader shader;
 
-        private RenderCanvas rCanvas = new RenderCanvas(1920, 1080);
+        private RenderCanvas rCanvas = new RenderCanvas(1366, 768);
         private Camera camera = new Camera();
         private RenderConv conveyor;
 
@@ -66,6 +67,7 @@ namespace SoftwareRender
             InitializeComponent();
             marioModel = ObjParser.parse("../../../mario-obj/source/Mario.obj");
             botModel = ObjParser.parse("../../../HardshellTransformer/Hardshell.obj");
+            chessModel = ObjParser.parse("../../../plane-obj/plane.obj");
             botModel.modelMatrix = Matrix4x4.CreateScale(1/100f);
             conveyor = new RenderConv(rCanvas);
             shader = new();

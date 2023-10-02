@@ -78,11 +78,17 @@ namespace SoftwareRender.Render
         }
         public Vector3 GetPixel(float x, float y)
         {
+            /*
+            int ttx = (int)MathF.Round(x * bufferWidth, MidpointRounding.AwayFromZero);
+            int tty = (int)MathF.Round(y * bufferHeight, MidpointRounding.AwayFromZero);
+
+            int tx = ttx & (bufferWidth - 1);
+            int ty = tty & (bufferHeight - 1);
+            */
             x = x - MathF.Floor(x);
             y = y - MathF.Floor(y);
             int tx = ((int)(bufferWidth * x));
             int ty = ((int)(bufferHeight * y));
-
             int index = tx + ty * bufferWidth;
 
             return colors[index];
