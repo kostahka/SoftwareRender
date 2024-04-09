@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:SoftwareRender"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800" KeyDown="Window_KeyDown" MouseDown="Window_MouseDown" MouseMove="Window_MouseMove" MouseUp="Window_MouseUp" MouseWheel="Window_MouseWheel">
+        Title="MainWindow" Height="450" Width="800" KeyDown="Window_KeyDown" MouseDown="Window_MouseDown" MouseMove="Window_MouseMove" MouseUp="Window_MouseUp" MouseWheel="Window_MouseWheel" Closed="Window_Closed">
     <Grid>
         <Image x:Name="displayImg" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
     </Grid>

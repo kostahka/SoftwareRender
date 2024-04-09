@@ -244,9 +244,7 @@ namespace SoftwareRender.RenderConveyor
                         {
                             Triangle tr = model.Triangles[i];
 
-                            Vector4 vw1 = model.OutVertices[tr.vertexIndexes[0].v_i - 1];
-                            Vector4 vw2 = model.OutVertices[tr.vertexIndexes[1].v_i - 1];
-                            Vector4 vw3 = model.OutVertices[tr.vertexIndexes[2].v_i - 1];
+                            
 
                             Vector4 uv1 = model.OutUVVertices[tr.vertexIndexes[0].v_i - 1];
                             Vector4 uv2 = model.OutUVVertices[tr.vertexIndexes[1].v_i - 1];
@@ -259,6 +257,10 @@ namespace SoftwareRender.RenderConveyor
                                 {
                                     if (tr.vertexIndexes[0].n_i == 0 && tr.primitiveMaterial.NormalText == null)
                                     {
+                                        Vector4 vw1 = model.OutVertices[tr.vertexIndexes[0].v_i - 1];
+                                        Vector4 vw2 = model.OutVertices[tr.vertexIndexes[1].v_i - 1];
+                                        Vector4 vw3 = model.OutVertices[tr.vertexIndexes[2].v_i - 1];
+
                                         Vector3 normal = Vector3.Normalize(-Cross(vw2 - vw1, vw2 - vw3));
                                         tr.primitiveMaterial.normal = normal;
                                         model.Triangles[i] = tr; 

@@ -8,41 +8,52 @@ namespace SoftwareRender.Render.ModelSupport
     class ModelShader : IShaderProgram
     {
         public Matrix4x4 model { get; set; } = Matrix4x4.Identity;
-        public Matrix4x4 proj { get; set; } = Matrix4x4.Identity;
-        public Matrix4x4 view { get; set; } = Matrix4x4.Identity;
-        public Vector3 lightPos { get; set; } = new();
-        public float lightIntensity { get; set; } = 26f;
-        public Vector3 eyePos { get; set; } = new();
-        float ambient = 0.5f;
-        float diffuse = 1.0f;
-        float specullar = 1.0f;
-
-        Vector3 colorMin = new(0);
-        Vector3 colorMax = new(1);
-
-        public Vector3 fragment(Vector3 pos, Vector3 normal, Vector3 ambientColor, Vector3 diffuseColor, Vector3 specullarColor, float specNs)
+        public Camera Camera { get; set; }
+        public DotLight Light { get; set; }
+        
+        public ModelShader(Camera camera, DotLight light)
         {
-            Vector3 lightDir = lightPos - pos;
-            float lightDist = lightDir.Length();
-            lightDir /= lightDist;
+            Camera = camera;
+            Light = light;
+        }
 
-            float dif = Vector3.Dot(lightDir, normal) / (lightDist * lightDist) * lightIntensity;
-            if (dif < 0)
-                dif = 0;
+        public Vector3 fragment(Vector3 pos,
+                                Vector3 normal,
+                                Vector3 ambientColor,
+                                Vector3 diffuseColor,
+                                Vector3 specullarColor,
+                                Vector3 lighPos,
+                                Vector3 lightColor,
+                                Vector3 vPos,
+                                float specNs,
+                                Vector3 MRAO)
+        {
+            /*Vector3 resColor = BlinnPhong.Lighning.fragment(pos,
+                                normal,
+                                ambientColor,
+                                diffuseColor,
+                                specullarColor,
+                                lighPos,
+                                lightColor,
+                                vPos,
+                                specNs);*/
 
-            Vector3 eyeDir = Vector3.Normalize(eyePos - pos);
-            Vector3 reflectDir = -Vector3.Reflect(lightDir, normal);
-            float reflectDot = Vector3.Dot(eyeDir, reflectDir);
-            float spec;
-            if (reflectDot < 0)
-                spec = 0;
-            else
-                spec = MathF.Pow(reflectDot, specNs);
-            Vector3 resColor = ambient * ambientColor
-                + dif * diffuse * diffuseColor
-                + spec * specullar * specullarColor;
+            Vector3 resColor = PBR.Lighning.fragment(pos,
+                                normal,
+                                ambientColor,
+                                diffuseColor,
+                                specullarColor,
+                                lighPos,
+                                lightColor,
+                                vPos, 
+                                MRAO.Y,
+                                MRAO.X,
+                                MRAO.Z);
 
-            return Vector3.Clamp(resColor, colorMin, colorMax);
+            resColor = ACES.ACESFitted(resColor);
+            resColor = GammaCorrection.LinearTosRGB(resColor * 1.8f);
+
+            return resColor;
         }
 
         public Vector3 fragmentP(Material material, Vector4 pos)
@@ -58,8 +69,13 @@ namespace SoftwareRender.Render.ModelSupport
                     material.AmbientColor.getValue(textUV),
                     material.DiffuseColor.getValue(textUV),
                     material.SpecullarColor.getValue(textUV),
-                    material.specNs
+                    Light.Pos,
+                    Light.LightColor,
+                    Camera.Eye,
+                    material.specNs,
+                    material.MRAO.getValue(textUV)
                 );
+            
         }
         public Vector3 fragmentPN(Material material, Vector4 pos, Vector3 normal)
         {
@@ -69,7 +85,11 @@ namespace SoftwareRender.Render.ModelSupport
                     material.AmbientColor.getValue(),
                     material.DiffuseColor.getValue(),
                     material.SpecullarColor.getValue(),
-                    material.specNs
+                    Light.Pos,
+                    Light.LightColor,
+                    Camera.Eye,
+                    material.specNs,
+                    material.MRAO.getValue()
                 );
         }
 
@@ -77,11 +97,15 @@ namespace SoftwareRender.Render.ModelSupport
         {
             Vector3 p = new(pos.X, pos.Y, pos.Z);
             return fragment(p,
-                    normal,
+                    material.NormalText == null ? normal : material.NormalText.Value.GetNormal(textUV),
                     material.AmbientColor.getValue(textUV),
                     material.DiffuseColor.getValue(textUV),
                     material.SpecullarColor.getValue(textUV),
-                    material.specNs
+                    Light.Pos,
+                    Light.LightColor,
+                    Camera.Eye,
+                    material.specNs,
+                    material.MRAO.getValue(textUV)
                 );
         }
         public Vector3 normal(Vector3 norm)
@@ -90,7 +114,7 @@ namespace SoftwareRender.Render.ModelSupport
         }
         public Vector4 vertexNormilized(Vector4 pos)
         {
-            return Vector4.Transform(pos, view * proj);
+            return Vector4.Transform(pos, Camera.View * Camera.Projection);
         }
 
         public Vector4 vertexToWorld(Vector4 pos)

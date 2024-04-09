@@ -16,11 +16,11 @@ namespace SoftwareRender.Render
         public Vector3 Pos { get; private set; }
         public float Scale { get; private set; }
         public Model Model { get; private set; }
-        public float Intensity { get; private set; }
+        public Vector3 LightColor { get; private set; }
         
-        public DotLight(float intensity) 
+        public DotLight(Vector3 lightColor) 
         {
-            Intensity = intensity;
+            LightColor = lightColor;
             List<Vector4> vertices = new List<Vector4>() 
             { 
                 new(-0.5f, -0.5f, -0.5f, 1), new(0.5f, -0.5f, -0.5f, 1), new(0.5f, -0.5f, 0.5f, 1), new(-0.5f, -0.5f, 0.5f, 1),
@@ -30,8 +30,9 @@ namespace SoftwareRender.Render
             ConstMaterialProperty ambientCol = new(new(0.6f, 0.7f, 0.7f));
             ConstMaterialProperty diffuseCol = new(new(0));
             ConstMaterialProperty specCol = new(new(0));
+            ConstMaterialProperty MRAO = new(new(0.1f));
 
-            Material material = new Material(ambientCol, diffuseCol, specCol, null, 0);
+            Material material = new Material(ambientCol, diffuseCol, specCol, MRAO, null, 0);
 
             VertexIndexes[][] triangleIndexes = new VertexIndexes[][] 
             {
@@ -106,7 +107,7 @@ namespace SoftwareRender.Render
         }
         public void ChangeIntensity(float d)
         {
-            Intensity += d;
+            LightColor += new Vector3(d);
         }
         private void UpdatePosition()
         {

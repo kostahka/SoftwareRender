@@ -7,14 +7,16 @@ namespace SoftwareRender.Render.MaterialSupport
         public MaterialProperty AmbientColor { get; private set; }
         public MaterialProperty DiffuseColor { get; private set; }
         public MaterialProperty SpecullarColor { get; private set; }
+        public MaterialProperty MRAO { get; private set; }
         public float specNs { get; private set; }
         public NormalMap? NormalText { get; set; }
         public Vector3 normal = new(1);
-        public Material(MaterialProperty ambient, MaterialProperty diffuse, MaterialProperty specullar, NormalMap? normalMap, float specNs = 0.0f)
+        public Material(MaterialProperty ambient, MaterialProperty diffuse, MaterialProperty specullar, MaterialProperty mrao, NormalMap? normalMap, float specNs = 0.0f)
         {
             AmbientColor = ambient;
             DiffuseColor = diffuse;
             SpecullarColor = specullar;
+            MRAO = mrao;
             NormalText = normalMap;
             this.specNs = specNs;
         }
@@ -23,6 +25,7 @@ namespace SoftwareRender.Render.MaterialSupport
             AmbientColor = new ConstMaterialProperty(new(0.2f));
             DiffuseColor = new ConstMaterialProperty(new(0.5f));
             SpecullarColor = new ConstMaterialProperty(new(0.8f));
+            MRAO = new ConstMaterialProperty(new(0.1f));
             NormalText = null;
             specNs = 4;
         }

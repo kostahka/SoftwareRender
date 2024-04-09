@@ -5,9 +5,9 @@ namespace SoftwareRender.Render
 {
     class Camera
     {
-        public Matrix4x4 proj { get; private set; }
-        public Matrix4x4 view { get; private set; }
-        public Vector3 eye { get; private set; }
+        public Matrix4x4 Projection { get; private set; }
+        public Matrix4x4 View { get; private set; }
+        public Vector3 Eye { get; private set; }
 
         float FOV = (float)Math.PI / 4;
         float aspect = 1366/768f;
@@ -42,12 +42,12 @@ namespace SoftwareRender.Render
             Vector3 up = new(-MathF.Cos(angleX) * MathF.Sin(angleY), MathF.Cos(angleY), -MathF.Sin(angleX) * MathF.Sin(angleY));
             Vector3 t = new(MathF.Cos(angleX) * MathF.Cos(angleY), MathF.Sin(angleY), MathF.Sin(angleX) * MathF.Cos(angleY));
             t = Vector3.Normalize(t);
-            eye = target + t * distanceToTarget;
-            view = Matrix4x4.CreateLookAt(eye, target, up);
+            Eye = target + t * distanceToTarget;
+            View = Matrix4x4.CreateLookAt(Eye, target, up);
         }
         private void UpdateProj()
         {
-            proj = Matrix4x4.CreatePerspectiveFieldOfView(FOV, aspect, zNear, zFar);
+            Projection = Matrix4x4.CreatePerspectiveFieldOfView(FOV, aspect, zNear, zFar);
         }
         public Camera() 
         {

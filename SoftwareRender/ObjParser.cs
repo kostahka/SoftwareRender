@@ -44,12 +44,14 @@ namespace SoftwareRender
             using (var reader = new StreamReader(stream: new FileStream(file_path, FileMode.Open)))
             {
                 string? materialName = null;
-                Vector3 valAmbient = new(0.2f);
+                Vector3 valAmbient = new(0.01f);
                 Vector3 valDiffuse = new(0.5f);
-                Vector3 valSpecullar = new(0.8f);
+                Vector3 valSpecullar = new(1.0f);
+                Vector3 valMRAO = new(0.1f, 0.1f, 0.1f);
                 Texture? texAmbient = null;
                 Texture? texDiffuse = null;
                 Texture? texSpecullar = null;
+                Texture? texMRAO = null;
                 Texture? texNormal = null;
                 float SpecNs = 5;
 
@@ -74,13 +76,17 @@ namespace SoftwareRender
                             MaterialProperty Specullar = texSpecullar == null ?
                                 new ConstMaterialProperty(valSpecullar) : new TexturedMaterialProperty(texSpecullar, valSpecullar);
 
+                            MaterialProperty MRAO = texMRAO == null ?
+                                new ConstMaterialProperty(valMRAO) : new TexturedMaterialProperty(texMRAO, valMRAO);
+
                             NormalMap? normalMap = texNormal == null ? null : new(texNormal);
 
-                            materials[materialName] = new Material(Ambient, Diffuse, Specullar, normalMap, SpecNs);
+                            materials[materialName] = new Material(Ambient, Diffuse, Specullar, MRAO, normalMap, SpecNs);
                             texAmbient = null;
                             texDiffuse = null;
                             texSpecullar = null;
                             texNormal = null;
+                            texMRAO = null;
                             SpecNs = 5f;
                             materialName = null;
                         }
@@ -88,7 +94,7 @@ namespace SoftwareRender
                         string[] tokens = line.Split(" ", System.StringSplitOptions.RemoveEmptyEntries);
                         materialName = tokens[1];
                     }
-                    else if (line.StartsWith("Ka "))
+                    else if (line.StartsWith("Ka ") || line.StartsWith("Ke "))
                     {
                         valAmbient = ParseVectorLine(line);
                     }
@@ -106,7 +112,7 @@ namespace SoftwareRender
 
                         SpecNs = ParseFloat(tokens[1]);
                     }
-                    else if (line.StartsWith("map_Ka "))
+                    else if (line.StartsWith("map_Ka ") || line.StartsWith("map_Ke "))
                     {
                         texAmbient = ParseTextureLine(line, file_path);
                     }
@@ -118,9 +124,13 @@ namespace SoftwareRender
                     {
                         texSpecullar = ParseTextureLine(line, file_path);
                     }
-                    else if (line.StartsWith("map_bump ") || line.StartsWith("bump "))
+                    else if (line.StartsWith("map_bump ") || line.StartsWith("bump ") || line.StartsWith("norm "))
                     {
                         texNormal = ParseTextureLine(line, file_path);
+                    }
+                    else if (line.StartsWith("map_MRAO "))
+                    {
+                        texMRAO = ParseTextureLine(line, file_path);
                     }
                 }
 
@@ -135,9 +145,12 @@ namespace SoftwareRender
                     MaterialProperty Specullar = texSpecullar == null ?
                         new ConstMaterialProperty(valSpecullar) : new TexturedMaterialProperty(texSpecullar, valSpecullar);
 
+                    MaterialProperty MRAO = texMRAO == null ?
+                                new ConstMaterialProperty(valMRAO) : new TexturedMaterialProperty(texMRAO, valMRAO);
+
                     NormalMap? normalMap = texNormal == null ? null : new(texNormal);
 
-                    materials[materialName] = new Material(Ambient, Diffuse, Specullar, normalMap, SpecNs);
+                    materials[materialName] = new Material(Ambient, Diffuse, Specullar, MRAO, normalMap, SpecNs);
                 }
             }
             return materials;
